@@ -81,7 +81,7 @@ export default function PackPage() {
     }
   }
 
-  async function download() {
+  async function download(format: "zip" | "wastickers" = "zip") {
     if (!pack) return;
     setBusy(true);
     try {
@@ -89,6 +89,7 @@ export default function PackPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          format,
           title: pack.title,
           publisher: pack.ownerName,
           animated: pack.animated,
@@ -101,9 +102,15 @@ export default function PackPage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? "No se pudo descargar el paquete.");
       }
-      downloadBlob(blobOf(new Uint8Array(await res.arrayBuffer()), "application/zip"), `${slugify(pack.title)}.zip`);
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      if (format === "wastickers") {
+        downloadBlob(blobOf(bytes, "application/octet-stream"), `${slugify(pack.title)}.wastickers`);
+        toast("Listo. Abre el archivo con Sticker Maker y toca «Agregar a WhatsApp».", "ok");
+      } else {
+        downloadBlob(blobOf(bytes, "application/zip"), `${slugify(pack.title)}.zip`);
+        toast("ZIP descargado. Dentro tienes las instrucciones (LEEME.txt).", "ok");
+      }
       void registerDownload(pack.id);
-      toast("ZIP descargado. Dentro tienes las instrucciones (LEEME.txt).", "ok");
     } catch (err) {
       toast(err instanceof Error ? err.message : "No se pudo descargar el paquete.", "error");
     } finally {
@@ -192,8 +199,11 @@ export default function PackPage() {
       {pack.description && <p className="max-w-2xl">{pack.description}</p>}
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" className="btn-primary" onClick={download} disabled={busy}>
-          ⬇ Descargar ZIP ({pack.downloadCount})
+        <button type="button" className="btn-primary" onClick={() => download("wastickers")} disabled={busy}>
+          ➕ Agregar a WhatsApp ({pack.downloadCount})
+        </button>
+        <button type="button" className="btn-ghost" onClick={() => download("zip")} disabled={busy}>
+          ⬇ ZIP
         </button>
         <button type="button" className="btn-ghost" onClick={toggleFav} disabled={busy} aria-pressed={fav}>
           {fav ? "♥" : "♡"} Favorito ({pack.favCount})
@@ -235,8 +245,9 @@ export default function PackPage() {
           ))}
         </ul>
         <p className="mt-3 text-sm text-muted">
-          <strong>Enviar</strong> abre el menú de compartir del teléfono: elige WhatsApp y un chat (por ejemplo, «Tú»). En Android, toca el sticker recibido y elige «Agregar a favoritos» para usarlo en cualquier chat.
-          El ZIP trae todos los WebP, el ícono y las instrucciones para importar el paquete completo con una app de paquetes de stickers.
+          <strong>Agregar a WhatsApp</strong> descarga un archivo que abre la app gratuita{" "}
+          <em>Sticker Maker</em> (Android y iPhone); allí tocas «Agregar a WhatsApp» y el paquete queda instalado. WhatsApp no permite hacerlo directamente desde una página web.
+          «Enviar» solo manda el sticker como imagen normal en la mayoría de teléfonos. El ZIP trae los WebP, el ícono y las instrucciones para otras apps.
         </p>
       </section>
 

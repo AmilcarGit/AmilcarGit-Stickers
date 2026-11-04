@@ -69,3 +69,17 @@ export async function buildPackZip(input: PackZipInput): Promise<Uint8Array> {
   zip.file("LEEME.txt", README);
   return zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
 }
+
+/**
+ * Archivo `.wastickers` (un ZIP plano con author.txt, title.txt, los stickers y la portada) que
+ * la app Sticker Maker abre directamente para agregar el paquete a WhatsApp.
+ * Formato descrito por la comunidad, no por WhatsApp: se probó con ZIP, pero no con la app real.
+ */
+export async function buildWastickers(input: Pick<PackZipInput, "title" | "publisher" | "stickers" | "tray">, now = Date.now()): Promise<Uint8Array> {
+  const zip = new JSZip();
+  zip.file("author.txt", input.publisher || "AmilcarGit Stickers");
+  zip.file("title.txt", input.title);
+  input.stickers.forEach((s, i) => zip.file(`${now + i}.webp`, s.bytes));
+  zip.file(`${now + input.stickers.length}.png`, input.tray);
+  return zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
+}

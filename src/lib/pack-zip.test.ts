@@ -1,6 +1,6 @@
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
-import { buildPackZip, slugify } from "./pack-zip";
+import { buildPackZip, buildWastickers, slugify } from "./pack-zip";
 
 describe("slugify", () => {
   it("limpia acentos y símbolos", () => {
@@ -35,5 +35,18 @@ describe("buildPackZip", () => {
     expect(meta.stickers[1]).toEqual({ image_file: "stickers/02.webp", emojis: ["😸", "🐱"] });
     expect(await zip.file("CREDITOS.txt")!.async("string")).toContain("Amilcar");
     expect(Array.from(await zip.file("stickers/02.webp")!.async("uint8array"))).toEqual([11]);
+  });
+});
+
+describe("buildWastickers", () => {
+  it("arma un ZIP plano con autor, título, stickers y portada", async () => {
+    const bytes = await buildWastickers(
+      { title: "Gatos", publisher: "Amilcar", tray: new Uint8Array([1]), stickers: [{ bytes: new Uint8Array([10]), emojis: [] }, { bytes: new Uint8Array([11]), emojis: [] }] },
+      1000,
+    );
+    const zip = await JSZip.loadAsync(bytes);
+    expect(Object.keys(zip.files).sort()).toEqual(["1000.webp", "1001.webp", "1002.png", "author.txt", "title.txt"]);
+    expect(await zip.file("title.txt")!.async("string")).toBe("Gatos");
+    expect(await zip.file("author.txt")!.async("string")).toBe("Amilcar");
   });
 });

@@ -1,7 +1,7 @@
 import { AppError } from "@/server/errors";
 import { json, route } from "@/server/http";
 import { hit } from "@/server/store";
-import { buildPackZip } from "@/lib/pack-zip";
+import { buildPackZip, buildWastickers } from "@/lib/pack-zip";
 import { bodyOf } from "@/lib/bytes";
 import { WA } from "@/lib/whatsapp";
 
@@ -15,6 +15,7 @@ type Body = {
   credits?: unknown;
   trayUrl?: unknown;
   stickers?: unknown;
+  format?: unknown;
 };
 
 /** Solo se descargan archivos del almacenamiento de la propia plataforma (evita SSRF). */
@@ -67,6 +68,16 @@ export const POST = route(async ({ d, req, ip }) => {
     const title = typeof body.title === "string" ? body.title.slice(0, 60) : "Paquete";
     const publisher = typeof body.publisher === "string" ? body.publisher.slice(0, 60) : "";
     const credits = typeof body.credits === "string" ? body.credits.slice(0, 4000) : "";
+    if (body.format === "wastickers") {
+      const file = await buildWastickers({ title, publisher, stickers, tray });
+      return new Response(bodyOf(file), {
+        headers: {
+          "content-type": "application/octet-stream",
+          "content-disposition": 'attachment; filename="paquete.wastickers"',
+          "cache-control": "no-store",
+        },
+      });
+    }
     const zip = await buildPackZip({ title, publisher, stickers, tray, credits, animated });
     return new Response(bodyOf(zip), {
       headers: {

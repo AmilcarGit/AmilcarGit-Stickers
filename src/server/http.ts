@@ -56,19 +56,32 @@ export type Ctx = { d: Deps; req: Request; ip: string };
 
 type Extra<P> = { params: Promise<P> };
 
-/** Envuelve una ruta: comprueba origen, arma dependencias y convierte errores en respuestas JSON. */
-export function route<P = Record<string, never>>(fn: (c: Ctx, params: P) => Promise<Response>) {
-  return async (req: Request, extra?: Extra<P>): Promise<Response> => {
+async function run<P>(req: Request, params: P, fn: (c: Ctx, params: P) => Promise<Response>): Promise<Response> {
+  try {
+    assertSameOrigin(req);
+    return await fn({ d: getDeps(), req, ip: clientIp(req) }, params);
+  } catch (err) {
+    if (err instanceof AppError) return json({ error: err.message }, err.status);
+    console.error("Error inesperado en la API:", err instanceof Error ? err.message : "desconocido");
+    return json({ error: "Ocurrió un error en el servidor. Inténtalo otra vez." }, 500);
+  }
+}
+
+/** Ruta sin parámetros de URL: comprueba origen, arma dependencias y convierte errores en respuestas JSON. */
+export function route(fn: (c: Ctx) => Promise<Response>) {
+  return (req: Request): Promise<Response> => run(req, undefined, (c) => fn(c));
+}
+
+/** Ruta con parámetros de URL (`[id]`, `[username]`): en Next 15 `params` es una promesa. */
+export function routeWith<P>(fn: (c: Ctx, params: P) => Promise<Response>) {
+  return async (req: Request, extra: Extra<P>): Promise<Response> => {
+    let params: P;
     try {
-      assertSameOrigin(req);
-      const d = getDeps();
-      const params = (extra ? await extra.params : {}) as P;
-      return await fn({ d, req, ip: clientIp(req) }, params);
-    } catch (err) {
-      if (err instanceof AppError) return json({ error: err.message }, err.status);
-      console.error("Error inesperado en la API:", err instanceof Error ? err.message : "desconocido");
-      return json({ error: "Ocurrió un error en el servidor. Inténtalo otra vez." }, 500);
+      params = await extra.params;
+    } catch {
+      return json({ error: "Solicitud inválida." }, 400);
     }
+    return run(req, params, fn);
   };
 }
 

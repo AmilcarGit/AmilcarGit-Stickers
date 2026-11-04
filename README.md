@@ -9,9 +9,10 @@ Esta es la **primera versión (v0.1)**. Para ser transparentes sobre qué está 
 
 | Área | Estado |
 | --- | --- |
-| Reglas de WhatsApp, créditos, historial, validadores, filtros, quitar fondo, ensamblador de WebP animado, lectura de proyectos, límites de uso | ✅ **Probado**: 54 pruebas unitarias pasan y el código compila en TypeScript estricto. (El generador de ZIP, `pack-zip`, tiene 2 pruebas más que aún no se ejecutaron: dependen de `jszip` y las corre el CI) |
+| Reglas de WhatsApp, créditos, historial, validadores, filtros, quitar fondo, ensamblador de WebP animado, lectura de proyectos, límites de uso | ✅ **Probado** con pruebas unitarias (incluido el generador de ZIP) |
 | Motor del editor (render 3D, borde, sombra, animación) y exportación | ✅ **Probado en Chromium real**: sticker estático de 31 KB, animado de 18 cuadros y 498 KB que el decodificador del navegador reconoce como animado, con transparencia |
-| Páginas, autenticación con Firebase, Firestore, subida a Vercel Blob, rutas `/api/*` | ⚠️ **Escrito pero aún no compilado ni ejecutado de punta a punta.** La primera verificación real es el workflow de GitHub Actions (lint, tipos, pruebas y build) y una prueba manual con tu proyecto de Firebase |
+| Lint, tipos, las 56 pruebas y el build de producción | ✅ **GitHub Actions en verde** (workflow `CI`) |
+| Páginas, autenticación con Firebase, Firestore, subida a Vercel Blob, rutas `/api/*` | ⚠️ **Compilan, pero aún no se ejecutaron de punta a punta.** Falta probar registro, verificación de correo, recuperación, guardado de proyectos, publicación y descarga con un proyecto real de Firebase y Vercel Blob, y desplegar las reglas de `firestore.rules` |
 | Exportación en Safari / iPhone | ⚠️ Safari no sabe codificar WebP en canvas; el código usa un convertidor en el servidor (`/api/webp`). **Sin probar en un iPhone real** |
 | Diseño móvil, accesibilidad, despliegue en Vercel | ⚠️ Pendiente de probar en dispositivos reales |
 

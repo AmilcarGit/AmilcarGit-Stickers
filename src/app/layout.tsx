@@ -16,6 +16,8 @@ export const metadata: Metadata = {
   description:
     "Crea, exporta y comparte stickers 3D y animados para WhatsApp. Editor táctil, exportación WebP lista para usar y créditos de autoría.",
   applicationName: "AmilcarGit Stickers",
+  icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "Stickers", statusBarStyle: "black-translucent" },
   openGraph: {
     type: "website",
     siteName: "AmilcarGit Stickers",

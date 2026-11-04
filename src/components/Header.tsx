@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Img } from "./Img";
+import { InstallButton } from "./InstallButton";
 import { useAuth, useToast } from "./Providers";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -60,6 +61,7 @@ export function Header() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          <InstallButton />
           <ThemeToggle />
           {!loading && !user && (
             <>

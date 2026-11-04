@@ -111,6 +111,25 @@ export default function PackPage() {
     }
   }
 
+  /** Comparte un solo sticker (archivo WebP) con otra app, p. ej. WhatsApp. Si el teléfono no lo permite, lo descarga. */
+  async function sendSticker(url: string, index: number) {
+    const name = `${slugify(pack?.title ?? "sticker")}-${index + 1}.webp`;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("archivo no disponible");
+      const file = new File([await res.blob()], name, { type: "image/webp" });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file] });
+        return;
+      }
+      downloadBlob(file, name);
+      toast("Tu navegador no puede compartir archivos; el sticker se descargó.", "info");
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return; // la persona canceló
+      toast("No se pudo enviar el sticker. Prueba con «Descargar ZIP».", "error");
+    }
+  }
+
   async function share() {
     const url = window.location.href;
     try {
@@ -205,13 +224,19 @@ export default function PackPage() {
         </h2>
         <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
           {pack.stickers.map((s, i) => (
-            <li key={s.url} className="checker aspect-square overflow-hidden rounded-xl border border-line p-1">
-              <Img src={s.url} alt={`Sticker ${i + 1}${s.emojis.length ? ` (${s.emojis.join(" ")})` : ""}`} className="h-full w-full object-contain" />
+            <li key={s.url} className="space-y-1">
+              <div className="checker aspect-square overflow-hidden rounded-xl border border-line p-1">
+                <Img src={s.url} alt={`Sticker ${i + 1}${s.emojis.length ? ` (${s.emojis.join(" ")})` : ""}`} className="h-full w-full object-contain" />
+              </div>
+              <button type="button" className="btn-ghost w-full !min-h-[36px] !px-2 text-xs" onClick={() => sendSticker(s.url, i)} aria-label={`Enviar el sticker ${i + 1} a WhatsApp u otra app`}>
+                Enviar
+              </button>
             </li>
           ))}
         </ul>
         <p className="mt-3 text-sm text-muted">
-          El ZIP incluye los WebP, el ícono y las instrucciones para importarlos a WhatsApp con una app de paquetes de stickers.
+          <strong>Enviar</strong> abre el menú de compartir del teléfono: elige WhatsApp y un chat (por ejemplo, «Tú»). En Android, toca el sticker recibido y elige «Agregar a favoritos» para usarlo en cualquier chat.
+          El ZIP trae todos los WebP, el ícono y las instrucciones para importar el paquete completo con una app de paquetes de stickers.
         </p>
       </section>
 

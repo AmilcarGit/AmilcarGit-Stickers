@@ -1,12 +1,10 @@
 "use client";
 
-import { updateProfile as updateAuthProfile } from "firebase/auth";
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { RequireAuth, VerifyBanner } from "@/components/Guards";
 import { Img } from "@/components/Img";
 import { useAuth, useToast } from "@/components/Providers";
 import { saveProfile } from "@/lib/data";
-import { auth } from "@/lib/firebase";
 
 /** Reduce la foto a 256x256 (recorte centrado) en JPEG para que pese poco. */
 async function resizeAvatar(file: File): Promise<Blob> {
@@ -34,7 +32,8 @@ async function resizeAvatar(file: File): Promise<Blob> {
 }
 
 function SettingsInner() {
-  const { user, profile, refreshProfile, getToken } = useAuth();
+  const { user, setUser } = useAuth();
+  const profile = user;
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [displayName, setDisplayName] = useState("");
@@ -66,12 +65,10 @@ function SettingsInner() {
     setBusy(true);
     try {
       const name = displayName.trim().slice(0, 60) || profile.username;
-      await saveProfile(user.uid, { displayName: name, bio: bio.trim().slice(0, 280), profilePublic });
-      await updateAuthProfile(auth().currentUser!, { displayName: name });
-      await refreshProfile();
+      setUser(await saveProfile({ displayName: name, bio: bio.trim().slice(0, 280), profilePublic }));
       toast("Perfil actualizado.", "ok");
-    } catch {
-      toast("No se pudo guardar el perfil.", "error");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudo guardar el perfil.", "error");
     } finally {
       setBusy(false);
     }
@@ -87,11 +84,10 @@ function SettingsInner() {
       const form = new FormData();
       form.append("file", new File([blob], "avatar.jpg", { type: "image/jpeg" }));
       form.append("kind", "avatar");
-      const res = await fetch("/api/upload", { method: "POST", headers: { Authorization: `Bearer ${await getToken()}` }, body: form });
+      const res = await fetch("/api/upload", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "No se pudo subir la foto.");
-      await saveProfile(user.uid, { photoURL: data.url });
-      await refreshProfile();
+      setUser(await saveProfile({ photoURL: data.url }));
       toast("Foto actualizada.", "ok");
     } catch (err) {
       toast(err instanceof Error ? err.message : "No se pudo subir la foto.", "error");

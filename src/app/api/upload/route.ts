@@ -1,21 +1,18 @@
 import { put } from "@vercel/blob";
 import sharp from "sharp";
 import { isJpegBytes, isPngBytes, isWebpBytes } from "@/lib/bytes";
-import { rateLimit } from "@/lib/rate-limit";
-import { json, verifyRequest } from "@/lib/server-auth";
 import { WA } from "@/lib/whatsapp";
+import { AppError } from "@/server/errors";
+import { json, requireUser, route } from "@/server/http";
+import { hit } from "@/server/store";
 
 export const runtime = "nodejs";
 
 type Kind = "sticker" | "tray" | "avatar";
 
-export async function POST(req: Request): Promise<Response> {
-  const user = await verifyRequest(req);
-  if (!user) return json({ error: "Inicia sesión para subir archivos." }, 401);
-  if (!user.emailVerified) return json({ error: "Verifica tu correo electrónico antes de publicar." }, 403);
-  if (!rateLimit(`upload:${user.uid}`, 150, 60 * 60 * 1000)) {
-    return json({ error: "Demasiadas subidas seguidas. Espera un rato." }, 429);
-  }
+export const POST = route(async ({ d, req }) => {
+  const { user } = await requireUser(d, req, { verified: true });
+  if (!(await hit(d.store, `rl:upload:${user.uid}`, 150, 3600))) throw new AppError(429, "Demasiadas subidas seguidas. Espera un rato.");
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return json({ error: "El almacenamiento de archivos no está configurado en el servidor." }, 503);
   }
@@ -71,4 +68,4 @@ export async function POST(req: Request): Promise<Response> {
   const path = `${kind}s/${user.uid}/${crypto.randomUUID()}.${ext}`;
   const blob = await put(path, file, { access: "public", contentType, addRandomSuffix: false });
   return json({ url: blob.url, bytes: bytes.length, animated });
-}
+});

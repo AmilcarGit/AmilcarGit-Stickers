@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authErrorMessage, clamp, normalizeUsername, safeNext, validateEmail, validatePassword, validateUsername } from "./validators";
+import { clamp, normalizeUsername, safeNext, validateEmail, validatePassword, validateUsername } from "./validators";
 
 describe("safeNext", () => {
   it("acepta rutas internas y rechaza redirecciones externas", () => {
@@ -40,14 +40,6 @@ describe("validatePassword", () => {
     expect(validatePassword("sololetras")).not.toBeNull();
     expect(validatePassword("12345678")).not.toBeNull();
     expect(validatePassword("Segura123")).toBeNull();
-  });
-});
-
-describe("authErrorMessage", () => {
-  it("traduce códigos conocidos y tiene mensaje por defecto", () => {
-    expect(authErrorMessage("auth/email-already-in-use")).toContain("ya tiene una cuenta");
-    expect(authErrorMessage("auth/invalid-credential")).toContain("incorrectos");
-    expect(authErrorMessage("otro")).toContain("No se pudo");
   });
 });
 

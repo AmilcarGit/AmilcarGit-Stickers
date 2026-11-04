@@ -4,13 +4,25 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { RequireAdmin } from "@/components/Guards";
 import { useToast } from "@/components/Providers";
-import { listOpenReports, resolveReport } from "@/lib/data";
-import { REPORT_REASONS, type Report } from "@/lib/types";
+import { listOpenReports, listUsers, resolveReport } from "@/lib/data";
+import { REPORT_REASONS, type Report, type UserRow } from "@/lib/types";
 
 function AdminInner() {
   const toast = useToast();
   const [reports, setReports] = useState<Report[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [total, setTotal] = useState(0);
+
+  const loadUsers = useCallback(async (offset: number) => {
+    try {
+      const page = await listUsers(offset);
+      setTotal(page.total);
+      setUsers((prev) => (offset === 0 ? page.users : [...prev, ...page.users]));
+    } catch {
+      toast("No se pudo cargar el registro de usuarios.", "error");
+    }
+  }, [toast]);
 
   const load = useCallback(async () => {
     try {
@@ -23,16 +35,17 @@ function AdminInner() {
 
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadUsers(0);
+  }, [load, loadUsers]);
 
   async function resolve(r: Report, action: "removed" | "dismissed") {
     if (action === "removed" && !confirm(`¿Retirar el paquete «${r.packTitle}»?`)) return;
     try {
-      await resolveReport(r, action);
+      await resolveReport(r.id, action);
       setReports((list) => list.filter((x) => x.id !== r.id));
       toast(action === "removed" ? "Paquete retirado." : "Reporte descartado.", "ok");
-    } catch {
-      toast("No se pudo completar la acción.", "error");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudo completar la acción.", "error");
     }
   }
 
@@ -68,6 +81,45 @@ function AdminInner() {
           ))}
         </ul>
       )}
+
+      <section aria-labelledby="usuarios" className="space-y-3">
+        <h2 id="usuarios" className="text-xl font-bold">
+          Usuarios registrados ({total})
+        </h2>
+        <div className="card overflow-x-auto !p-0">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-line text-muted">
+              <tr>
+                <th scope="col" className="p-3">Usuario</th>
+                <th scope="col" className="p-3">Correo</th>
+                <th scope="col" className="p-3">Verificado</th>
+                <th scope="col" className="p-3">Paquetes</th>
+                <th scope="col" className="p-3">Alta</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.uid} className="border-b border-line/50 last:border-0">
+                  <td className="p-3">
+                    <Link href={`/u/${u.username}`} className="text-brand hover:underline">
+                      @{u.username}
+                    </Link>
+                  </td>
+                  <td className="p-3">{u.email}</td>
+                  <td className="p-3">{u.emailVerified ? "Sí" : "No"}</td>
+                  <td className="p-3">{u.packCount}</td>
+                  <td className="p-3">{new Date(u.createdAt).toLocaleDateString("es")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {users.length < total && (
+          <button type="button" className="btn-ghost" onClick={() => loadUsers(users.length)}>
+            Ver más
+          </button>
+        )}
+      </section>
     </div>
   );
 }

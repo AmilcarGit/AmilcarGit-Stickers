@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
-import { ConfigNotice } from "@/components/Guards";
 import { useAuth, useToast } from "@/components/Providers";
 import { registerUser, usernameAvailable } from "@/lib/data";
-import { authErrorMessage, normalizeUsername, validateEmail, validatePassword, validateUsername } from "@/lib/validators";
+import { normalizeUsername, validateEmail, validatePassword, validateUsername } from "@/lib/validators";
 
 export default function RegisterPage() {
-  const { user, loading, configured } = useAuth();
+  const { user, loading, setUser } = useAuth();
   const router = useRouter();
   const toast = useToast();
   const [form, setForm] = useState({ email: "", password: "", confirm: "", username: "", displayName: "", accept: false });
@@ -20,8 +19,6 @@ export default function RegisterPage() {
   useEffect(() => {
     if (!loading && user && !busy) router.replace("/dashboard");
   }, [loading, user, busy, router]);
-
-  if (!configured) return <ConfigNotice />;
 
   const set = (k: keyof typeof form, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -48,17 +45,20 @@ export default function RegisterPage() {
 
     setBusy(true);
     try {
-      await registerUser({
+      const { me, emailSent } = await registerUser({
         email: form.email,
         password: form.password,
         username: form.username,
         displayName: form.displayName.slice(0, 60),
       });
-      toast("Cuenta creada. Te enviamos un correo para verificarla.", "ok");
+      setUser(me);
+      toast(
+        emailSent ? "Cuenta creada. Te enviamos un correo para verificarla." : "Cuenta creada. El envío de correos aún no está configurado, así que no podrás verificarla por ahora.",
+        emailSent ? "ok" : "info",
+      );
       router.replace("/dashboard");
     } catch (err) {
-      const code = (err as { code?: string }).code;
-      setError(code ? authErrorMessage(code) : err instanceof Error ? err.message : "No se pudo crear la cuenta.");
+      setError(err instanceof Error ? err.message : "No se pudo crear la cuenta.");
     } finally {
       setBusy(false);
     }

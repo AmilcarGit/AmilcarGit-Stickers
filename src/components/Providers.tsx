@@ -1,22 +1,21 @@
 "use client";
 
-import { onAuthStateChanged, reload, type User } from "firebase/auth";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { getProfile, isAdmin as checkAdmin } from "@/lib/data";
-import { auth, firebaseConfigured } from "@/lib/firebase";
-import type { UserProfile } from "@/lib/types";
+import { fetchMe, logoutUser } from "@/lib/data";
+import type { MeInfo } from "@/lib/types";
 
 /* ------------------------------- Sesión ------------------------------- */
 
 type AuthState = {
-  user: User | null;
-  profile: UserProfile | null;
+  /** Cuenta con sesión iniciada (null si no hay sesión). Incluye perfil, correo y si es moderadora. */
+  user: MeInfo | null;
   admin: boolean;
   loading: boolean;
-  configured: boolean;
-  refreshProfile: () => Promise<void>;
-  reloadUser: () => Promise<void>;
-  getToken: () => Promise<string>;
+  /** Vuelve a pedir la cuenta al servidor (tras verificar el correo, editar el perfil, publicar…). */
+  refresh: () => Promise<void>;
+  /** Usa directamente una cuenta ya recibida (tras iniciar sesión o registrarse). */
+  setUser: (me: MeInfo | null) => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -36,10 +35,8 @@ const ToastContext = createContext<(message: string, kind?: ToastKind) => void>(
 export const useToast = () => useContext(ToastContext);
 
 export function Providers({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [admin, setAdmin] = useState(false);
-  const [loading, setLoading] = useState(firebaseConfigured);
+  const [user, setUser] = useState<MeInfo | null>(null);
+  const [loading, setLoading] = useState(true);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const nextId = useRef(1);
 
@@ -49,55 +46,24 @@ export function Providers({ children }: { children: ReactNode }) {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4500);
   }, []);
 
-  const loadProfile = useCallback(async (u: User | null) => {
-    if (!u) {
-      setProfile(null);
-      setAdmin(false);
-      return;
-    }
+  const refresh = useCallback(async () => {
     try {
-      const [p, a] = await Promise.all([getProfile(u.uid), checkAdmin(u.uid)]);
-      setProfile(p);
-      setAdmin(a);
+      setUser(await fetchMe());
     } catch {
-      setProfile(null);
-      setAdmin(false);
+      setUser(null);
     }
   }, []);
 
   useEffect(() => {
-    if (!firebaseConfigured) return;
-    return onAuthStateChanged(auth(), (u) => {
-      setUser(u);
-      void loadProfile(u).finally(() => setLoading(false));
-    });
-  }, [loadProfile]);
+    void refresh().finally(() => setLoading(false));
+  }, [refresh]);
 
-  const value = useMemo<AuthState>(
-    () => ({
-      user,
-      profile,
-      admin,
-      loading,
-      configured: firebaseConfigured,
-      refreshProfile: () => loadProfile(user),
-      reloadUser: async () => {
-        const u = auth().currentUser;
-        if (u) {
-          await reload(u);
-          setUser(auth().currentUser);
-          // Se refresca el token para que las reglas vean email_verified = true.
-          await auth().currentUser?.getIdToken(true);
-        }
-      },
-      getToken: async () => {
-        const u = auth().currentUser;
-        if (!u) throw new Error("Inicia sesión para continuar.");
-        return u.getIdToken();
-      },
-    }),
-    [user, profile, admin, loading, loadProfile],
-  );
+  const logout = useCallback(async () => {
+    await logoutUser();
+    setUser(null);
+  }, []);
+
+  const value = useMemo<AuthState>(() => ({ user, admin: user?.admin === true, loading, refresh, setUser, logout }), [user, loading, refresh, logout]);
 
   return (
     <AuthContext.Provider value={value}>

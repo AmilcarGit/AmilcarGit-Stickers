@@ -120,7 +120,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 export function StickerEditor() {
-  const { user, getToken } = useAuth();
+  const { user } = useAuth();
   const toast = useToast();
   const router = useRouter();
   const params = useSearchParams();
@@ -464,7 +464,7 @@ export function StickerEditor() {
     if (scene.elements.length === 0) return toast("Agrega algo al sticker antes de guardar.", "info");
     setSaving(true);
     try {
-      const id = await saveProject(user.uid, projectId, {
+      const id = await saveProject(projectId, {
         name: name.trim().slice(0, 80) || "Mi sticker",
         thumb: makeThumb(),
         sceneJson: JSON.stringify(hist.current),
@@ -506,7 +506,7 @@ export function StickerEditor() {
     if (result) URL.revokeObjectURL(result.url);
     setResult(null);
     try {
-      const r = await exportSticker(hist.current, getRenderer(), { getToken, onProgress: setProgress });
+      const r = await exportSticker(hist.current, getRenderer(), { onProgress: setProgress });
       setResult({ ...r, url: URL.createObjectURL(blobOf(r.bytes, "image/webp")) });
     } catch (err) {
       toast(err instanceof Error ? err.message : "No se pudo exportar el sticker.", "error");

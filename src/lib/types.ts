@@ -25,7 +25,22 @@ export type UserProfile = {
   packCount: number;
 };
 
-export type PackSticker = { url: string; emojis: string[]; bytes: number };
+/** Lo que ve la propia persona de su cuenta. */
+export type MeInfo = UserProfile & { email: string; emailVerified: boolean; admin: boolean };
+
+/** Fila del registro de usuarios que ve un moderador. */
+export type UserRow = {
+  uid: string;
+  username: string;
+  displayName: string;
+  email: string;
+  emailVerified: boolean;
+  createdAt: number;
+  packCount: number;
+  stickerCount: number;
+};
+
+export type PackSticker ={ url: string; emojis: string[]; bytes: number };
 
 export type Pack = {
   id: string;

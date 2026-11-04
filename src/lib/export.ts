@@ -13,8 +13,6 @@ export type ExportResult = {
 };
 
 export type ExportOptions = {
-  /** Token de Firebase, solo se usa si el navegador no sabe codificar WebP (Safari/iPhone). */
-  getToken?: () => Promise<string>;
   onProgress?: (fraction: number) => void;
 };
 
@@ -32,11 +30,10 @@ export async function encodeWebp(canvas: HTMLCanvasElement, quality: number, opt
 
   const png = await canvasBlob(canvas, "image/png");
   if (!png) throw new Error("No se pudo generar la imagen.");
-  if (!opts.getToken) throw new Error("Tu navegador no puede crear WebP. Inicia sesión para usar el convertidor del servidor.");
-  const token = await opts.getToken();
+  // La sesión viaja en la cookie; sin sesión el servidor responde 401 con un mensaje claro.
   const res = await fetch(`/api/webp?q=${Math.round(quality * 100)}`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "image/png" },
+    headers: { "Content-Type": "image/png" },
     body: png,
   });
   if (!res.ok) {

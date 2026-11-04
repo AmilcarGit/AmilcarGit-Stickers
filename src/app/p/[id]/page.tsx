@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { ConfigNotice } from "@/components/Guards";
 import { Img } from "@/components/Img";
 import { useAuth, useToast } from "@/components/Providers";
 import { ReportDialog } from "@/components/ReportDialog";
 import { blobOf } from "@/lib/bytes";
 import { LICENSES, buildCredits, creditsToText } from "@/lib/credits";
-import { deletePack, getPack, isFavorite, registerDownload, setFavorite, updatePackInfo } from "@/lib/data";
+import { deletePack, getPack, registerDownload, setFavorite, updatePackInfo } from "@/lib/data";
 import { downloadBlob } from "@/lib/export";
 import { slugify } from "@/lib/pack-zip";
 import type { Pack } from "@/lib/types";
@@ -17,7 +16,7 @@ import type { Pack } from "@/lib/types";
 export default function PackPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
-  const { user, configured, refreshProfile } = useAuth();
+  const { user, refresh } = useAuth();
   const toast = useToast();
   const router = useRouter();
 
@@ -28,30 +27,22 @@ export default function PackPage() {
   const [reporting, setReporting] = useState(false);
 
   useEffect(() => {
-    if (!configured) return;
     let cancelled = false;
     getPack(id)
-      .then((p) => {
+      .then((found) => {
         if (cancelled) return;
-        setPack(p);
-        setState(p ? "ready" : "missing");
+        setPack(found?.pack ?? null);
+        setFav(found?.favorited ?? false);
+        setState(found ? "ready" : "missing");
       })
       .catch(() => !cancelled && setState("missing"));
     return () => {
       cancelled = true;
     };
-  }, [id, configured]);
-
-  useEffect(() => {
-    if (!user || !pack) return;
-    isFavorite(user.uid, pack.id)
-      .then(setFav)
-      .catch(() => setFav(false));
-  }, [user, pack]);
+  }, [id, user?.uid]);
 
   const closeReport = useCallback(() => setReporting(false), []);
 
-  if (!configured) return <ConfigNotice />;
   if (state === "loading") return <p className="text-muted" role="status">Cargando paquete…</p>;
   if (state === "missing" || !pack) {
     return (
@@ -80,11 +71,11 @@ export default function PackPage() {
     if (!user || !pack) return toast("Inicia sesión para guardar favoritos.", "info");
     setBusy(true);
     try {
-      await setFavorite(user.uid, pack.id, !fav);
-      setPack({ ...pack, favCount: Math.max(0, pack.favCount + (fav ? -1 : 1)) });
+      const favCount = await setFavorite(pack.id, !fav);
+      setPack({ ...pack, favCount });
       setFav(!fav);
-    } catch {
-      toast("No se pudo actualizar el favorito.", "error");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudo actualizar el favorito.", "error");
     } finally {
       setBusy(false);
     }
@@ -137,23 +128,22 @@ export default function PackPage() {
     if (!pack) return;
     const visibility = pack.visibility === "public" ? "private" : "public";
     try {
-      await updatePackInfo(pack.id, { visibility, listed: visibility === "public" && pack.status === "active" });
-      setPack({ ...pack, visibility, listed: visibility === "public" && pack.status === "active" });
+      setPack(await updatePackInfo(pack.id, { visibility }));
       toast(visibility === "public" ? "Ahora es público." : "Ahora es privado.", "ok");
-    } catch {
-      toast("No se pudo cambiar la visibilidad.", "error");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudo cambiar la visibilidad.", "error");
     }
   }
 
   async function remove() {
     if (!pack || !confirm("¿Eliminar este paquete? No se puede deshacer.")) return;
     try {
-      await deletePack(pack);
-      await refreshProfile();
+      await deletePack(pack.id);
+      await refresh();
       toast("Paquete eliminado.", "ok");
       router.push("/dashboard");
-    } catch {
-      toast("No se pudo eliminar el paquete.", "error");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudo eliminar el paquete.", "error");
     }
   }
 

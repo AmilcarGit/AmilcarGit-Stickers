@@ -1,16 +1,14 @@
 "use client";
 
-import { signInWithEmailAndPassword } from "firebase/auth";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
-import { ConfigNotice } from "@/components/Guards";
 import { useAuth } from "@/components/Providers";
-import { auth } from "@/lib/firebase";
-import { authErrorMessage, safeNext, validateEmail } from "@/lib/validators";
+import { loginUser } from "@/lib/data";
+import { safeNext, validateEmail } from "@/lib/validators";
 
 function LoginForm() {
-  const { user, loading, configured } = useAuth();
+  const { user, loading, setUser } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
   const next = safeNext(params.get("next"));
@@ -23,8 +21,6 @@ function LoginForm() {
     if (!loading && user) router.replace(next);
   }, [loading, user, router, next]);
 
-  if (!configured) return <ConfigNotice />;
-
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError("");
@@ -33,10 +29,10 @@ function LoginForm() {
     if (!password) return setError("Escribe tu contraseña.");
     setBusy(true);
     try {
-      await signInWithEmailAndPassword(auth(), email.trim(), password);
+      setUser(await loginUser({ email: email.trim(), password }));
       router.replace(next);
     } catch (err) {
-      setError(authErrorMessage((err as { code?: string }).code ?? ""));
+      setError(err instanceof Error ? err.message : "No se pudo iniciar sesión.");
     } finally {
       setBusy(false);
     }

@@ -32,27 +32,3 @@ export function safeNext(raw: string | null): string {
 export function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }
-
-/** Mensajes en español para los códigos de error de Firebase Auth. */
-export function authErrorMessage(code: string): string {
-  switch (code) {
-    case "auth/email-already-in-use":
-      return "Ese correo ya tiene una cuenta. Inicia sesión o recupera tu contraseña.";
-    case "auth/invalid-email":
-      return "El correo no es válido.";
-    case "auth/weak-password":
-      return "La contraseña es muy débil.";
-    case "auth/invalid-credential":
-    case "auth/wrong-password":
-    case "auth/user-not-found":
-      return "Correo o contraseña incorrectos.";
-    case "auth/too-many-requests":
-      return "Demasiados intentos. Espera unos minutos e inténtalo otra vez.";
-    case "auth/network-request-failed":
-      return "No hay conexión con el servidor. Revisa tu internet.";
-    case "auth/requires-recent-login":
-      return "Por seguridad, vuelve a iniciar sesión para hacer este cambio.";
-    default:
-      return "No se pudo completar la acción. Inténtalo otra vez.";
-  }
-}

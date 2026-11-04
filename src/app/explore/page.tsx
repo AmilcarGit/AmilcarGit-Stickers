@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ConfigNotice } from "@/components/Guards";
 import { PackCard } from "@/components/PackCard";
 import { useAuth } from "@/components/Providers";
-import { listFavoriteIds, listPublicPacks } from "@/lib/data";
+import { listMyFavorites, listPublicPacks } from "@/lib/data";
 import { CATEGORIES, type Pack } from "@/lib/types";
 
 type Sort = "recent" | "trending" | "downloads";
@@ -16,7 +15,7 @@ const SORTS: { id: Sort; label: string }[] = [
 ];
 
 export default function ExplorePage() {
-  const { user, configured } = useAuth();
+  const { user } = useAuth();
   const [packs, setPacks] = useState<Pack[]>([]);
   const [favIds, setFavIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +26,6 @@ export default function ExplorePage() {
   const [onlyFavs, setOnlyFavs] = useState(false);
 
   useEffect(() => {
-    if (!configured) return;
     let cancelled = false;
     listPublicPacks()
       .then((list) => !cancelled && setPacks(list))
@@ -36,15 +34,15 @@ export default function ExplorePage() {
     return () => {
       cancelled = true;
     };
-  }, [configured]);
+  }, []);
 
   useEffect(() => {
     if (!user) {
       setFavIds([]);
       return;
     }
-    listFavoriteIds(user.uid)
-      .then(setFavIds)
+    listMyFavorites()
+      .then((list) => setFavIds(list.map((p) => p.id)))
       .catch(() => setFavIds([]));
   }, [user]);
 
@@ -61,8 +59,6 @@ export default function ExplorePage() {
     if (sort === "downloads") list.sort((a, b) => b.downloadCount - a.downloadCount || b.createdAt - a.createdAt);
     return list;
   }, [packs, q, category, sort, onlyFavs, favIds]);
-
-  if (!configured) return <ConfigNotice />;
 
   return (
     <div className="space-y-6">

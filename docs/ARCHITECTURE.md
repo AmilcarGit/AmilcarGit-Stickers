@@ -3,27 +3,35 @@
 ## Visión general
 
 ```
-Navegador (Next.js, cliente)                  Vercel (serverless)                 Servicios
-┌─────────────────────────────┐   token     ┌───────────────────┐
-│ Editor (canvas 512×512)     │  Firebase   │ /api/upload       │──► Vercel Blob (public)
-│ Exportación WebP + mux      │───────────► │ /api/webp (sharp) │
-│ Firebase Auth SDK           │             │ /api/zip          │◄── descarga de Blob
-│ Firestore SDK               │             └───────────────────┘
-└──────────────┬──────────────┘
-               │ reglas de seguridad (firestore.rules)
-               ▼
-         Firebase Auth + Firestore
+Navegador (Next.js, cliente)            Vercel (serverless, /api/*)              Servicios
+┌─────────────────────────────┐ cookie ┌──────────────────────────────┐
+│ Editor (canvas 512×512)     │ HttpOnly│ auth: registro, login, sesión│──► Upstash Redis
+│ Exportación WebP + mux      │───────►│ proyectos, paquetes, admin   │    (usuarios, sesiones,
+│ Páginas y formularios       │        │ /api/upload (sharp)          │     proyectos, paquetes)
+└─────────────────────────────┘        │ /api/webp  /api/zip          │──► Vercel Blob (archivos)
+                                       │ correo (nodemailer, SMTP)    │──► tu proveedor SMTP
+                                       └──────────────────────────────┘
 ```
 
-La mayor parte del trabajo (editar, renderizar, codificar WebP) ocurre **en el navegador**, así que el servidor casi no consume recursos: solo valida y almacena lo que se publica.
+La mayor parte del trabajo (editar, renderizar, codificar WebP) ocurre **en el navegador**; el servidor valida, guarda y entrega.
 
 ## Decisiones
 
-**Firebase Auth + Firestore, no Vercel Postgres/NextAuth.** Vercel no trae base de datos ni cuentas. Firebase ofrece verificación de correo, recuperación de contraseña y persistencia de sesión sin que la app toque contraseñas, con un plan gratuito suficiente para empezar.
+**Cuentas propias sobre Upstash Redis.** El registro de usuarios vive en una base Redis (Upstash, REST, apta para serverless). Toda la lógica está en `src/server/*` detrás de una interfaz `Store` (`UpstashStore` en producción, `MemoryStore` en pruebas), así se prueba sin red.
 
-**Vercel Blob, no Firebase Storage.** Firebase Storage requiere plan de pago; Blob usa la capa gratuita de Vercel y se integra con el mismo despliegue.
+**Contraseñas.** `scrypt` (N=16384, r=8, p=1) con sal aleatoria por usuario, comparación en tiempo constante. Nunca se guardan ni se registran en claro; no hay contraseñas en `localStorage`.
 
-**Verificación de tokens con `jose`, sin Firebase Admin.** Evita guardar una cuenta de servicio. Se valida la firma contra las claves públicas de Google, el emisor `https://securetoken.google.com/<proyecto>` y la audiencia (id del proyecto).
+**Sesiones.** Token firmado (HMAC-SHA256 con `AUTH_SECRET`) en una cookie `HttpOnly`, `SameSite=Lax` y `Secure` en producción, **más** un registro de sesión en Redis (`sess:{id}`): cerrar sesión o cambiar la contraseña lo borra y el token robado deja de servir. Las peticiones que cambian datos comprueban `Origin` (anti-CSRF).
+
+**Unicidad atómica.** Usuario y correo se reservan con `SET NX` (`uname:*`, `uemail:*`), así dos registros simultáneos no pueden tomar el mismo.
+
+**Correo.** Verificación (24 h) y recuperación de contraseña (1 h) usan tokens aleatorios guardados como hash SHA-256 y de un solo uso. Requieren un SMTP (`SMTP_URL`); sin él el registro y el inicio de sesión funcionan, pero no se puede verificar la cuenta (y por tanto no se puede publicar) ni recuperar la contraseña.
+
+**Moderación.** Es moderador quien tenga correo **verificado** incluido en `ADMIN_EMAILS`. Ve los reportes y el registro completo de usuarios (`/admin`).
+
+**Límites de uso** en Redis (`INCR` + `EXPIRE`), por IP, correo o usuario, válidos entre instancias serverless.
+
+**Vercel Blob, no Firebase Storage.** Los archivos publicados van a Blob; el servidor solo acepta URLs de archivos propios del usuario (`/{tipo}s/{uid}/…`) y los borra cuando se elimina el paquete.
 
 **Render del sticker por capas (`SceneRenderer`).** Elementos → silueta oscura desplazada N veces (extrusión 3D) → degradado de luz recortado al sticker → silueta blanca dilatada (borde) → sombra. Todo con canvas 2D, sin WebGL, así funciona igual en Android, iPhone y escritorio.
 
@@ -37,20 +45,23 @@ La mayor parte del trabajo (editar, renderizar, codificar WebP) ocurre **en el n
 
 **Un único archivo de reglas de WhatsApp** (`src/lib/whatsapp.ts`). Si WhatsApp cambia sus límites, solo se edita ahí.
 
-## Modelo de datos (Firestore)
+## Modelo de datos (Redis)
 
-| Colección | Documento | Notas |
-| --- | --- | --- |
-| `users/{uid}` | perfil | `username`, `displayName`, `bio`, `photoURL`, `profilePublic`, contadores |
-| `usernames/{nombre}` | `{ uid }` | Garantiza usuarios únicos; se crea en el mismo lote que el perfil |
-| `projects/{id}` | proyecto del editor | `sceneJson`, miniatura, autoría; solo lo lee su dueño |
-| `packs/{id}` | paquete publicado | `listed` = público y activo; `status` lo cambia solo un moderador |
-| `favorites/{uid_packId}` | favorito | |
-| `reports/{id}` | reporte | Solo lo leen moderadores |
-| `admins/{uid}` | moderador | Solo se crea desde la consola de Firebase |
+| Clave | Contenido |
+| --- | --- |
+| `user:{uid}` | cuenta: perfil, correo, hash de contraseña, verificado, contadores |
+| `uname:{usuario}`, `uemail:{correo}` | reservas únicas → `uid` |
+| `users` (zset) | registro de usuarios por fecha de alta |
+| `sess:{id}`, `usess:{uid}` | sesiones activas y su índice por usuario |
+| `verify:{sha256}`, `reset:{sha256}` | tokens de un solo uso con caducidad |
+| `project:{id}`, `projects:{uid}` | proyectos del editor (máx. 700 KB cada uno, 30 por usuario) |
+| `pack:{id}`, `packs:public`, `packs:owner:{uid}` | paquetes y sus índices |
+| `packs:fav`, `packs:dl`, `fav:{uid}` | contadores y favoritos |
+| `report:{id}`, `reports:open` | reportes |
+| `rl:*` | contadores de límite de uso |
 
-`packs.listed` existe para consultar paquetes públicos con un único filtro de igualdad y no exigir índices compuestos.
+**Límite conocido:** Upstash REST admite cuerpos de ~1 MB; por eso los proyectos tienen tope y las imágenes grandes deben reducirse antes de guardarse. Redis no es una base relacional: las búsquedas se hacen sobre índices propios (zsets) y el filtrado de Explorar ocurre en el navegador.
 
 ## Pruebas
 
-Las funciones puras viven en `src/lib` y tienen pruebas junto a ellas (`*.test.ts`). El workflow `.github/workflows/ci.yml` ejecuta lint, comprobación de tipos, pruebas y build de producción en cada push y pull request.
+Las funciones puras (`src/lib`) y toda la lógica de servidor (`src/server/server.test.ts`, sobre `MemoryStore`) tienen pruebas. El workflow `.github/workflows/ci.yml` ejecuta lint, tipos, pruebas y build en cada push y pull request. Lo que **no** cubre: la conexión real a Upstash, el envío real de correo y Vercel Blob (requieren credenciales).

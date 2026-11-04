@@ -1,10 +1,8 @@
 "use client";
 
-import { signOut } from "firebase/auth";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { auth } from "@/lib/firebase";
 import { Img } from "./Img";
 import { useAuth, useToast } from "./Providers";
 import { ThemeToggle } from "./ThemeToggle";
@@ -16,7 +14,8 @@ const links = [
 ];
 
 export function Header() {
-  const { user, profile, admin, loading } = useAuth();
+  const { user, admin, loading, logout: doLogout } = useAuth();
+  const profile = user;
   const toast = useToast();
   const router = useRouter();
   const pathname = usePathname();
@@ -26,7 +25,7 @@ export function Header() {
 
   async function logout() {
     try {
-      await signOut(auth());
+      await doLogout();
       router.push("/");
     } catch {
       toast("No se pudo cerrar la sesión.", "error");

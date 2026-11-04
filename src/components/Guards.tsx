@@ -1,36 +1,22 @@
 "use client";
 
-import { sendEmailVerification } from "firebase/auth";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { auth } from "@/lib/firebase";
+import { resendVerification } from "@/lib/data";
 import { useAuth, useToast } from "./Providers";
-
-export function ConfigNotice() {
-  return (
-    <div className="card mx-auto max-w-xl" role="alert">
-      <h2 className="text-lg font-bold">Falta conectar Firebase</h2>
-      <p className="mt-2 text-sm text-muted">
-        Esta instalación todavía no tiene las variables <code>NEXT_PUBLIC_FIREBASE_*</code>. Sigue la guía del README
-        (sección «Configurar Firebase») y vuelve a desplegar.
-      </p>
-    </div>
-  );
-}
 
 /** Protege una página: sin sesión redirige a /login y recuerda a dónde volver. */
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { user, loading, configured } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (configured && !loading && !user) {
+    if (!loading && !user) {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     }
-  }, [configured, loading, user, router, pathname]);
+  }, [loading, user, router, pathname]);
 
-  if (!configured) return <ConfigNotice />;
   if (loading || !user) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center text-muted" role="status">
@@ -57,7 +43,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
 }
 
 export function VerifyBanner() {
-  const { user, reloadUser } = useAuth();
+  const { user, refresh } = useAuth();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   if (!user || user.emailVerified) return null;
@@ -65,10 +51,10 @@ export function VerifyBanner() {
   async function resend() {
     setBusy(true);
     try {
-      await sendEmailVerification(auth().currentUser!);
+      await resendVerification();
       toast("Te enviamos otro correo de verificación.", "ok");
-    } catch {
-      toast("No se pudo enviar el correo. Espera un momento e inténtalo otra vez.", "error");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudo enviar el correo. Inténtalo otra vez.", "error");
     } finally {
       setBusy(false);
     }
@@ -77,9 +63,8 @@ export function VerifyBanner() {
   async function check() {
     setBusy(true);
     try {
-      await reloadUser();
-      if (auth().currentUser?.emailVerified) toast("¡Correo verificado!", "ok");
-      else toast("Todavía no aparece verificado. Abre el enlace del correo y vuelve a probar.", "info");
+      await refresh();
+      toast("Si ya abriste el enlace del correo, tu cuenta aparecerá verificada en un momento.", "info");
     } finally {
       setBusy(false);
     }

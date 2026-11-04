@@ -1,5 +1,6 @@
-import { rateLimit } from "@/lib/rate-limit";
-import { json } from "@/lib/server-auth";
+import { AppError } from "@/server/errors";
+import { json, route } from "@/server/http";
+import { hit } from "@/server/store";
 import { buildPackZip } from "@/lib/pack-zip";
 import { bodyOf } from "@/lib/bytes";
 import { WA } from "@/lib/whatsapp";
@@ -35,9 +36,8 @@ async function fetchBytes(url: string, maxBytes: number): Promise<Uint8Array> {
   return buf;
 }
 
-export async function POST(req: Request): Promise<Response> {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
-  if (!rateLimit(`zip:${ip}`, 30, 10 * 60 * 1000)) return json({ error: "Demasiadas descargas seguidas." }, 429);
+export const POST = route(async ({ d, req, ip }) => {
+  if (!(await hit(d.store, `rl:zip:${ip}`, 30, 600))) throw new AppError(429, "Demasiadas descargas seguidas.");
 
   let body: Body;
   try {
@@ -78,4 +78,4 @@ export async function POST(req: Request): Promise<Response> {
   } catch {
     return json({ error: "No se pudo armar el paquete. Inténtalo otra vez." }, 502);
   }
-}
+});

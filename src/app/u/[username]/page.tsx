@@ -3,45 +3,36 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ConfigNotice } from "@/components/Guards";
 import { Img } from "@/components/Img";
 import { PackCard } from "@/components/PackCard";
 import { useAuth } from "@/components/Providers";
-import { getProfileByUsername, listPacksByOwner } from "@/lib/data";
+import { getUserPage } from "@/lib/data";
 import type { Pack, UserProfile } from "@/lib/types";
 
 export default function PublicProfilePage() {
   const params = useParams<{ username: string }>();
-  const { user, configured } = useAuth();
+  const { user, loading } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [packs, setPacks] = useState<Pack[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "missing">("loading");
 
   useEffect(() => {
-    if (!configured) return;
+    if (loading) return;
     let cancelled = false;
-    (async () => {
-      try {
-        const p = await getProfileByUsername(params.username);
+    getUserPage(params.username)
+      .then((page) => {
         if (cancelled) return;
-        if (!p) {
-          setState("missing");
-          return;
-        }
-        setProfile(p);
-        const own = user?.uid === p.uid;
-        setPacks(await listPacksByOwner(p.uid, !own).catch(() => []));
+        if (!page) return setState("missing");
+        setProfile(page.profile);
+        setPacks(page.packs);
         setState("ready");
-      } catch {
-        if (!cancelled) setState("missing");
-      }
-    })();
+      })
+      .catch(() => !cancelled && setState("missing"));
     return () => {
       cancelled = true;
     };
-  }, [params.username, configured, user]);
+  }, [params.username, loading, user?.uid]);
 
-  if (!configured) return <ConfigNotice />;
   if (state === "loading") return <p className="text-muted" role="status">Cargando perfil…</p>;
   if (state === "missing" || !profile) {
     return (

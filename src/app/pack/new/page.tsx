@@ -16,7 +16,8 @@ import { CATEGORIES, type Category } from "@/lib/types";
 import { WA, extractEmojis, validatePack } from "@/lib/whatsapp";
 
 function PackBuilder() {
-  const { user, profile, getToken } = useAuth();
+  const { user } = useAuth();
+  const profile = user;
   const toast = useToast();
   const router = useRouter();
 
@@ -130,7 +131,7 @@ function PackBuilder() {
     const form = new FormData();
     form.append("file", new File([blobOf(bytes, type)], name, { type }));
     form.append("kind", kind);
-    const res = await fetch("/api/upload", { method: "POST", headers: { Authorization: `Bearer ${await getToken()}` }, body: form });
+    const res = await fetch("/api/upload", { method: "POST", body: form });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error ?? "No se pudo subir un archivo.");
     return data.url as string;
@@ -151,10 +152,7 @@ function PackBuilder() {
       setProgress("Subiendo el ícono del paquete…");
       const trayUrl = await upload(await makeTrayIcon(new Uint8Array(items[0].bytes)), "tray", "tray.png", "image/png");
       setProgress("Publicando…");
-      const id = await publishPack({
-        ownerId: user.uid,
-        ownerUsername: profile.username,
-        ownerName: profile.displayName,
+      const published = await publishPack({
         title: title.trim(),
         description: description.trim().slice(0, 500),
         category,
@@ -173,7 +171,7 @@ function PackBuilder() {
       });
       await clearDraft();
       toast("¡Paquete publicado!", "ok");
-      router.push(`/p/${id}`);
+      router.push(`/p/${published.id}`);
     } catch (err) {
       toast(err instanceof Error ? err.message : "No se pudo publicar el paquete.", "error");
     } finally {

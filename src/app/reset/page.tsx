@@ -1,21 +1,15 @@
 "use client";
 
-import { sendPasswordResetEmail } from "firebase/auth";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { ConfigNotice } from "@/components/Guards";
-import { useAuth } from "@/components/Providers";
-import { auth } from "@/lib/firebase";
+import { forgotPassword } from "@/lib/data";
 import { validateEmail } from "@/lib/validators";
 
 export default function ResetPage() {
-  const { configured } = useAuth();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
-
-  if (!configured) return <ConfigNotice />;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -24,15 +18,11 @@ export default function ResetPage() {
     if (problem) return setError(problem);
     setBusy(true);
     try {
-      await sendPasswordResetEmail(auth(), email.trim());
+      await forgotPassword(email.trim());
     } catch (err) {
-      const code = (err as { code?: string }).code;
-      // Por seguridad no se revela si el correo existe o no.
-      if (code === "auth/network-request-failed" || code === "auth/too-many-requests") {
-        setError(code === "auth/too-many-requests" ? "Demasiados intentos. Espera unos minutos." : "No hay conexión con el servidor.");
-        setBusy(false);
-        return;
-      }
+      setError(err instanceof Error ? err.message : "No se pudo enviar el correo.");
+      setBusy(false);
+      return;
     }
     setSent(true);
     setBusy(false);

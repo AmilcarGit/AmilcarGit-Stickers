@@ -5,12 +5,13 @@ import { useCallback, useEffect, useState } from "react";
 import { Img } from "@/components/Img";
 import { RequireAuth, VerifyBanner } from "@/components/Guards";
 import { useAuth, useToast } from "@/components/Providers";
-import { deletePack, deleteProject, listFavoriteIds, listMyProjects, listPacksByOwner } from "@/lib/data";
+import { deletePack, deleteProject, listMyFavorites, listMyPacks, listMyProjects } from "@/lib/data";
 import { listDraft } from "@/lib/draft";
 import type { Pack, ProjectSummary } from "@/lib/types";
 
 function DashboardInner() {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, refresh } = useAuth();
+  const profile = user;
   const toast = useToast();
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [packs, setPacks] = useState<Pack[]>([]);
@@ -21,7 +22,7 @@ function DashboardInner() {
   const load = useCallback(async () => {
     if (!user) return;
     try {
-      const [p, k, f] = await Promise.all([listMyProjects(user.uid), listPacksByOwner(user.uid, false), listFavoriteIds(user.uid)]);
+      const [p, k, f] = await Promise.all([listMyProjects(), listMyPacks(), listMyFavorites()]);
       setProjects(p);
       setPacks(k);
       setFavorites(f.length);
@@ -54,12 +55,12 @@ function DashboardInner() {
   async function removePack(pack: Pack) {
     if (!confirm(`¿Eliminar el paquete «${pack.title}»? Dejará de estar disponible.`)) return;
     try {
-      await deletePack(pack);
+      await deletePack(pack.id);
       setPacks((list) => list.filter((p) => p.id !== pack.id));
-      await refreshProfile();
+      await refresh();
       toast("Paquete eliminado.", "ok");
-    } catch {
-      toast("No se pudo eliminar el paquete.", "error");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudo eliminar el paquete.", "error");
     }
   }
 
@@ -76,7 +77,7 @@ function DashboardInner() {
 
       <section className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Hola, {profile?.displayName || user?.displayName || "creador"} 👑</h1>
+          <h1 className="text-3xl font-bold">Hola, {profile?.displayName || "creador"} 👑</h1>
           <p className="mt-1 text-muted">
             {profile ? (
               <>

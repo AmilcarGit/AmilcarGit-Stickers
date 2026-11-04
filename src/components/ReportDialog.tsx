@@ -28,11 +28,11 @@ export function ReportDialog({ pack, onClose }: { pack: Pack; onClose: () => voi
     if (!user) return;
     setBusy(true);
     try {
-      await createReport({ packId: pack.id, packTitle: pack.title, reporterId: user.uid, reason, details: details.trim() });
+      await createReport({ packId: pack.id, reason, details: details.trim() });
       toast("Reporte enviado. Un moderador lo revisará.", "ok");
       onClose();
-    } catch {
-      toast("No se pudo enviar el reporte.", "error");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudo enviar el reporte.", "error");
       setBusy(false);
     }
   }

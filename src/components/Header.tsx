@@ -12,6 +12,7 @@ const links = [
   { href: "/explore", label: "Explorar" },
   { href: "/editor", label: "Crear" },
   { href: "/dashboard", label: "Mi panel" },
+  { href: "/docs", label: "API" },
 ];
 
 export function Header() {

@@ -95,6 +95,9 @@ function DashboardInner() {
           <Link href="/editor" className="btn-primary">
             Nuevo sticker
           </Link>
+          <Link href="/developers" className="btn-ghost">
+            API y claves
+          </Link>
           <Link href="/pack/new" className="btn-ghost">
             Mi paquete en borrador{draftCount > 0 ? ` (${draftCount})` : ""}
           </Link>

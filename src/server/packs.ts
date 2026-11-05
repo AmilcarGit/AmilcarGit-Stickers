@@ -193,3 +193,35 @@ export async function removeForModeration(d: Deps, id: string): Promise<void> {
   await d.store.set(`pack:${id}`, next);
   await d.store.zrem("packs:public", id);
 }
+
+/** Forma pública de un paquete para la API (sin identificadores internos de la cuenta). */
+export function publicPack(p: Pack, siteUrl: string) {
+  return {
+    id: p.id,
+    title: p.title,
+    description: p.description,
+    category: p.category,
+    tags: p.tags,
+    animated: p.animated,
+    license: p.license,
+    author: { username: p.ownerUsername, name: p.ownerName },
+    stickers: p.stickers.map((s) => ({ url: s.url, emojis: s.emojis, bytes: s.bytes })),
+    tray: p.trayUrl,
+    favorites: p.favCount,
+    downloads: p.downloadCount,
+    createdAt: new Date(p.createdAt).toISOString(),
+    page: `${siteUrl}/p/${p.id}`,
+  };
+}
+
+/** Búsqueda sobre los paquetes públicos más recientes (hasta 200): texto, categoría y paginación. */
+export async function searchPacks(d: Deps, opts: { q: string; category: string; limit: number; offset: number }): Promise<{ total: number; packs: Pack[] }> {
+  const term = opts.q.trim().toLowerCase().slice(0, 100);
+  const all = await listPublicPacks(d, 200);
+  const filtered = all.filter((p) => {
+    if (opts.category && p.category !== opts.category) return false;
+    if (!term) return true;
+    return [p.title, p.description, p.ownerName, p.ownerUsername, ...p.tags].some((t) => t.toLowerCase().includes(term));
+  });
+  return { total: filtered.length, packs: filtered.slice(opts.offset, opts.offset + opts.limit) };
+}

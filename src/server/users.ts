@@ -22,6 +22,8 @@ export type UserRecord = {
   packCount: number;
   passHash: string;
   emailVerified: boolean;
+  /** Plan de la API (por defecto «free»). Solo lo cambia un moderador. */
+  plan?: "free" | "pro" | "ultra";
 };
 
 const VERIFY_TTL = 60 * 60 * 24;
@@ -45,7 +47,7 @@ export function toProfile(u: UserRecord): UserProfile {
 }
 
 export function toMe(d: Deps, u: UserRecord): MeInfo {
-  return { ...toProfile(u), email: u.email, emailVerified: u.emailVerified, admin: isAdmin(d, u) };
+  return { ...toProfile(u), email: u.email, emailVerified: u.emailVerified, admin: isAdmin(d, u), plan: u.plan ?? "free" };
 }
 
 export async function getUser(d: Deps, uid: string): Promise<UserRecord | null> {
@@ -230,6 +232,7 @@ export async function listUsers(d: Deps, offset: number, limit: number): Promise
       displayName: u.displayName,
       email: u.email,
       emailVerified: u.emailVerified,
+      plan: u.plan ?? "free",
       createdAt: u.createdAt,
       packCount: u.packCount,
       stickerCount: u.stickerCount,

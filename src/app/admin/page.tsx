@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { RequireAdmin } from "@/components/Guards";
 import { useToast } from "@/components/Providers";
-import { listOpenReports, listUsers, resolveReport } from "@/lib/data";
+import { listOpenReports, listUsers, resolveReport, setUserPlan } from "@/lib/data";
 import { REPORT_REASONS, type Report, type UserRow } from "@/lib/types";
 
 function AdminInner() {
@@ -23,6 +23,16 @@ function AdminInner() {
       toast("No se pudo cargar el registro de usuarios.", "error");
     }
   }, [toast]);
+
+  async function changePlan(u: UserRow, plan: UserRow["plan"]) {
+    try {
+      await setUserPlan(u.uid, plan);
+      setUsers((list) => list.map((x) => (x.uid === u.uid ? { ...x, plan } : x)));
+      toast(`Plan de @${u.username}: ${plan}.`, "ok");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudo cambiar el plan.", "error");
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -93,6 +103,7 @@ function AdminInner() {
                 <th scope="col" className="p-3">Usuario</th>
                 <th scope="col" className="p-3">Correo</th>
                 <th scope="col" className="p-3">Verificado</th>
+                <th scope="col" className="p-3">Plan API</th>
                 <th scope="col" className="p-3">Paquetes</th>
                 <th scope="col" className="p-3">Alta</th>
               </tr>
@@ -107,6 +118,16 @@ function AdminInner() {
                   </td>
                   <td className="p-3">{u.email}</td>
                   <td className="p-3">{u.emailVerified ? "Sí" : "No"}</td>
+                  <td className="p-3">
+                    <label className="sr-only" htmlFor={`plan-${u.uid}`}>
+                      Plan de @{u.username}
+                    </label>
+                    <select id={`plan-${u.uid}`} className="input !min-h-[36px] !py-1" value={u.plan} onChange={(e) => changePlan(u, e.target.value as UserRow["plan"])}>
+                      <option value="free">free</option>
+                      <option value="pro">pro</option>
+                      <option value="ultra">ultra</option>
+                    </select>
+                  </td>
                   <td className="p-3">{u.packCount}</td>
                   <td className="p-3">{new Date(u.createdAt).toLocaleDateString("es")}</td>
                 </tr>

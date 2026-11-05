@@ -150,3 +150,24 @@ export async function resolveReport(id: string, action: "removed" | "dismissed")
 export async function listUsers(offset: number): Promise<{ total: number; users: UserRow[] }> {
   return api(`/api/admin/users?offset=${offset}&limit=50`);
 }
+
+/* ------------------------------ Claves de API ------------------------------ */
+
+export type ApiKeyInfo = { id: string; name: string; prefix: string; createdAt: number; lastUsedAt: number };
+export type ApiQuota = { plan: "free" | "pro" | "ultra"; limit: number; used: number; remaining: number; resetAt: number };
+
+export async function listApiKeys(): Promise<{ keys: ApiKeyInfo[]; quota: ApiQuota }> {
+  return api("/api/keys");
+}
+
+export async function createApiKey(name: string): Promise<{ key: string; info: ApiKeyInfo }> {
+  return api("/api/keys", { method: "POST", body: { name } });
+}
+
+export async function revokeApiKey(id: string): Promise<void> {
+  await api(`/api/keys/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export async function setUserPlan(uid: string, plan: "free" | "pro" | "ultra"): Promise<void> {
+  await api(`/api/admin/users/${encodeURIComponent(uid)}/plan`, { method: "POST", body: { plan } });
+}

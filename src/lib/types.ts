@@ -26,7 +26,7 @@ export type UserProfile = {
 };
 
 /** Lo que ve la propia persona de su cuenta. */
-export type MeInfo = UserProfile & { email: string; emailVerified: boolean; admin: boolean };
+export type MeInfo = UserProfile & { email: string; emailVerified: boolean; admin: boolean; plan: "free" | "pro" | "ultra" };
 
 /** Fila del registro de usuarios que ve un moderador. */
 export type UserRow = {
@@ -35,6 +35,7 @@ export type UserRow = {
   displayName: string;
   email: string;
   emailVerified: boolean;
+  plan: "free" | "pro" | "ultra";
   createdAt: number;
   packCount: number;
   stickerCount: number;

@@ -3,7 +3,8 @@ import { emptyScene } from "@/lib/scene";
 import type { Deps } from "./deps";
 import type { Mail } from "./mailer";
 import { MemoryStore } from "./memory-store";
-import { deletePack, getPackFor, listFavoriteIds, listPacksByOwner, listPublicPacks, publishPack, registerDownload, setFavorite, updatePack } from "./packs";
+import { MAX_KEYS_PER_USER, authenticateApiKey, createApiKey, dayStamp, listApiKeys, nextResetMs, revokeApiKey, setUserPlan } from "./apikeys";
+import { deletePack, getPackFor, listFavoriteIds, listPacksByOwner, listPublicPacks, publicPack, publishPack, registerDownload, searchPacks, setFavorite, updatePack } from "./packs";
 import { hashPassword, verifyPassword } from "./password";
 import { deleteProject, getProject, listProjects, saveProject } from "./projects";
 import { createReport, listOpenReports, resolveReport } from "./reports";
@@ -437,5 +438,130 @@ describe("registro de usuarios para moderación", () => {
     expect(first.users.map((u) => u.username)).toEqual(["user4", "user3"]);
     expect((await listUsers(d, 4, 10)).users.map((u) => u.username)).toEqual(["user0"]);
     expect(JSON.stringify(first)).not.toContain("passHash");
+  });
+});
+
+describe("claves de API y cuotas", () => {
+  beforeEach(() => {
+    store = new MemoryStore();
+    d = makeDeps();
+    sent = [];
+  });
+
+  async function verifiedUser() {
+    const { user } = await reg();
+    await verifyEmail(d, tokenFrom(sent[0]));
+    return (await getUser(d, user.uid))!;
+  }
+
+  it("crea una clave que solo se muestra una vez y se guarda como hash", async () => {
+    const u = await verifiedUser();
+    const { key, info } = await createApiKey(d, u, "Mi bot");
+    expect(key.startsWith("amk_")).toBe(true);
+    expect(key.length).toBeGreaterThanOrEqual(30);
+    expect(info.prefix).toBe(key.slice(0, 8));
+    const listed = await listApiKeys(d, u.uid);
+    expect(listed).toHaveLength(1);
+    expect(JSON.stringify(listed)).not.toContain(key);
+    expect(JSON.stringify(await store.zrange(`apikeys:${u.uid}`, 0, -1))).not.toContain(key);
+  });
+
+  it("exige correo verificado, nombre y respeta el máximo de claves", async () => {
+    const u = await verifiedUser();
+    const { user: sinVerificar } = await reg({ email: "bob@x.com", username: "bob" });
+    expect((await rejects(createApiKey(d, sinVerificar, "x"))).status).toBe(403);
+    expect((await rejects(createApiKey(d, u, "  "))).status).toBe(400);
+    for (let i = 0; i < MAX_KEYS_PER_USER; i++) await createApiKey(d, u, `k${i}`);
+    expect((await rejects(createApiKey(d, u, "una más"))).status).toBe(403);
+  });
+
+  it("autentica con la clave, descuenta cuota y rechaza claves malas o revocadas", async () => {
+    const u = await verifiedUser();
+    const { key, info } = await createApiKey(d, u, "bot");
+    const a = await authenticateApiKey(d, key);
+    expect(a.user.uid).toBe(u.uid);
+    expect(a.quota).toMatchObject({ plan: "free", limit: 100, used: 1, remaining: 99 });
+    expect((await authenticateApiKey(d, key)).quota.remaining).toBe(98);
+    expect((await rejects(authenticateApiKey(d, null))).status).toBe(401);
+    expect((await rejects(authenticateApiKey(d, "amk_" + "x".repeat(32)))).status).toBe(401);
+    expect((await rejects(authenticateApiKey(d, "otra-cosa"))).status).toBe(401);
+    await revokeApiKey(d, u.uid, info.id);
+    expect((await rejects(authenticateApiKey(d, key))).status).toBe(401);
+    expect((await rejects(revokeApiKey(d, u.uid, info.id))).status).toBe(404);
+  });
+
+  it("no deja revocar la clave de otra persona", async () => {
+    const u = await verifiedUser();
+    const { info } = await createApiKey(d, u, "bot");
+    expect((await rejects(revokeApiKey(d, "u_otro", info.id))).status).toBe(404);
+    expect(await listApiKeys(d, u.uid)).toHaveLength(1);
+  });
+
+  it("aplica el límite por minuto y la cuota diaria, que se reinicia a medianoche de Lima", async () => {
+    const u = await verifiedUser();
+    const { key } = await createApiKey(d, u, "bot");
+    const t0 = Date.UTC(2026, 10, 5, 12, 0, 0); // 07:00 en Lima
+    // 30 por minuto en el plan free
+    for (let i = 0; i < 30; i++) await authenticateApiKey(d, key, t0);
+    const minute = await rejects(authenticateApiKey(d, key, t0));
+    expect(minute.status).toBe(429);
+    expect(minute.message).toContain("minuto");
+    // cuota diaria: se simula alcanzar el tope
+    await store.set(`quota:${u.uid}:${dayStamp(t0)}`, 100);
+    await store.del(`rl:api:${u.uid}`);
+    const day = await rejects(authenticateApiKey(d, key, t0));
+    expect(day.status).toBe(429);
+    expect(day.message).toContain("hoy");
+    // pasada la medianoche de Lima (05:00 UTC) vuelve a haber cuota
+    const next = nextResetMs(t0);
+    expect(new Date(next).toISOString()).toBe("2026-11-06T05:00:00.000Z");
+    await store.del(`rl:api:${u.uid}`);
+    expect((await authenticateApiKey(d, key, next + 1000)).quota.used).toBe(1);
+  });
+
+  it("el plan cambia los límites y solo acepta planes válidos", async () => {
+    const u = await verifiedUser();
+    await setUserPlan(d, u.uid, "pro");
+    const { key } = await createApiKey(d, (await getUser(d, u.uid))!, "bot");
+    expect((await authenticateApiKey(d, key)).quota).toMatchObject({ plan: "pro", limit: 2000 });
+    expect((await rejects(setUserPlan(d, u.uid, "gratis-total"))).status).toBe(400);
+    expect((await rejects(setUserPlan(d, "u_nadie", "pro"))).status).toBe(404);
+  });
+});
+
+describe("API de paquetes", () => {
+  beforeEach(() => {
+    store = new MemoryStore();
+    d = makeDeps();
+    sent = [];
+  });
+
+  it("busca por texto y categoría, pagina y no expone datos internos", async () => {
+    const { user } = await reg();
+    await verifyEmail(d, tokenFrom(sent[0]));
+    const u = (await getUser(d, user.uid))!;
+    const base = (title: string, category: string, tags: string[]) => ({
+      title,
+      description: "d",
+      category,
+      tags,
+      visibility: "public",
+      license: "all-rights-reserved",
+      originality: "original",
+      animated: false,
+      trayUrl: `https://x.public.blob.vercel-storage.com/trays/${u.uid}/t.png`,
+      stickers: Array.from({ length: 3 }, (_, i) => ({ url: `https://x.public.blob.vercel-storage.com/stickers/${u.uid}/${i}.webp`, emojis: ["😀"], bytes: 1000 })),
+    });
+    await publishPack(d, u, base("Gatos graciosos", "Animales", ["gato"]));
+    await publishPack(d, u, base("Memes de oficina", "Memes", ["trabajo"]));
+    const all = await searchPacks(d, { q: "", category: "", limit: 10, offset: 0 });
+    expect(all.total).toBe(2);
+    expect((await searchPacks(d, { q: "GATO", category: "", limit: 10, offset: 0 })).packs.map((p) => p.title)).toEqual(["Gatos graciosos"]);
+    expect((await searchPacks(d, { q: "", category: "Memes", limit: 10, offset: 0 })).total).toBe(1);
+    expect((await searchPacks(d, { q: "", category: "", limit: 1, offset: 1 })).packs).toHaveLength(1);
+    const pub = publicPack(all.packs[0], "https://s.test");
+    expect(JSON.stringify(pub)).not.toContain("ownerId");
+    expect(pub.page).toBe(`https://s.test/p/${all.packs[0].id}`);
+    expect(pub.author).toEqual({ username: "ana", name: "Ana" });
   });
 });

@@ -73,6 +73,17 @@ npm run dev                  # http://localhost:3000
 
 Scripts: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
 
+## API pública (v1)
+
+Además de la web, el proyecto ofrece una **API con claves** pensada para bots de WhatsApp y apps. Documentación para usuarios: `/docs`; claves y uso: `/developers`.
+
+- **Stickers:** `POST /api/v1/sticker` convierte una imagen/GIF en un sticker (WebP 512×512 dentro del peso de WhatsApp); buscar stickers en Giphy; listar, buscar y **descargar paquetes** de la comunidad (ZIP o `.wastickers`).
+- **Búsqueda:** música (Apple iTunes Search, con fragmento oficial de 30 s), anime (Jikan), Wikipedia, libros (Open Library) e imágenes con licencia abierta (Openverse).
+- **Herramientas:** QR, hash, UUID, Base64, contraseñas.
+- **Claves:** `amk_…`, guardadas solo como hash SHA-256 y mostradas una vez; cuota diaria por plan (Free 100, Pro 2 000, Ultra 10 000; reinicio a las 12 a. m. de Lima) y límite por minuto. Un moderador cambia el plan de cada usuario en `/admin`.
+- **Qué NO incluye, a propósito:** descargas de YouTube, Spotify, Apple Music, TikTok o similares (violan sus términos y derechos de autor).
+- **Estado:** las conversiones, claves, cuotas, herramientas y proveedores externos tienen pruebas automáticas (los externos con respuestas simuladas); **no se probó aún contra los servicios reales ni con un bot de WhatsApp real**. `GIPHY_API_KEY` (clave propia y gratuita) es opcional.
+
 ## Cómo está organizado
 
 ```

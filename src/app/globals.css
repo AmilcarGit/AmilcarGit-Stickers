@@ -432,3 +432,11 @@ input[type="range"] {
 @media(prefers-reduced-motion:reduce) {
  .yui-profile-page * { scroll-behavior:auto!important; }
 }
+
+
+/* Verified identity marks */
+.yui-verified-mark { display:inline-flex; width:1.08em; height:1.08em; flex:0 0 1.08em; vertical-align:middle; filter:drop-shadow(0 1px 4px currentColor); }
+.yui-verified-mark svg { width:100%; height:100%; overflow:visible; fill:currentColor; }
+.yui-verified-check { fill:none!important; stroke:#fff; stroke-width:2.8; stroke-linecap:round; stroke-linejoin:round; }
+.yui-verified-blue { color:#2698ff; }
+.yui-verified-gold { color:#e9ae36; }

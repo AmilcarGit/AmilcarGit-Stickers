@@ -86,7 +86,7 @@ export async function monthlyRanking(d: Deps, nowMs = Date.now(), size = RANKING
   sorted.forEach(([, count], i) => {
     const u = records[i];
     if (!u || u.showInRanking === false || entries.length >= size) return;
-    entries.push({ rank: entries.length + 1, username: u.username, displayName: u.displayName, count, avatarV: u.avatarV ?? 0 });
+    entries.push({ rank: entries.length + 1, username: u.username, displayName: u.displayName, verifiedBadge: u.verifiedBadge ?? null, count, avatarV: u.avatarV ?? 0 });
   });
   return { month: `${month.slice(0, 4)}-${month.slice(4)}`, entries };
 }

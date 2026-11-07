@@ -20,7 +20,7 @@ const upload = (id: string, group: Endpoint["group"], tool: string, what: string
 
 export const ENDPOINTS: Endpoint[] = [
   { id: "sticker-convert", group: "Stickers", method: "POST", path: "/api/v1/sticker", what: "Convierte una imagen o GIF en un sticker de WhatsApp WebP 512×512.", params: [{ name: "fit", label: "Ajuste", example: "contain", options: ["contain", "cover"] }, { name: "quality", label: "Calidad (10-100)", example: "80" }], body: "file", returns: "image" },
-  { id: "sticker-search", group: "Stickers", method: "GET", path: "/api/v1/sticker/search", what: "Busca stickers en GIPHY. Requiere GIPHY_API_KEY y atribución Powered by GIPHY.", params: [q("gato"), limit], returns: "json" },
+  { id: "sticker-search", group: "Stickers", method: "GET", path: "/api/v1/sticker/search", what: "Busca stickers en GIPHY y devuelve enlaces GIF/WebP; el explorador muestra sus vistas previas. Requiere GIPHY_API_KEY y atribución Powered by GIPHY.", params: [q("gato"), limit], returns: "json" },
   { id: "music", group: "Búsqueda", method: "GET", path: "/api/v1/search/music", what: "Canciones de Apple iTunes con fragmento oficial de 30 segundos.", params: [q("Daft Punk"), limit], returns: "json" },
   { id: "anime", group: "Búsqueda", method: "GET", path: "/api/v1/search/anime", what: "Busca anime en Jikan / MyAnimeList.", params: [q("Naruto"), limit], returns: "json" },
   { id: "wiki", group: "Búsqueda", method: "GET", path: "/api/v1/search/wiki", what: "Artículos de Wikipedia con resumen.", params: [q("Machu Picchu"), { name: "lang", label: "Idioma", example: "es" }, limit], returns: "json" },

@@ -66,9 +66,9 @@ async function run<P>(req: Request, params: P, fn: Handler<P>): Promise<Response
       const d = getDeps();
       const url = new URL(req.url);
       const ip = clientIp(req);
-      if (err.status === 401) {
+      if (err.status === 401 && await hit(d.store, `security:auth-event:${ip}`, 1, 60)) {
         await recordSecurityEvent(d, { type: "api_key_rejected", severity: "warning", ip, path: url.pathname, detail: "Clave de API ausente, inválida o revocada" }).catch(() => undefined);
-      } else if (err.status === 429) {
+      } else if (err.status === 429 && await hit(d.store, `security:rate-event:${ip}`, 1, 60)) {
         await recordSecurityEvent(d, { type: "rate_limited", severity: "warning", ip, path: url.pathname, detail: "Se alcanzó un límite de solicitudes" }).catch(() => undefined);
       }
       const res = fail(err.status, err.message);

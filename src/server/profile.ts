@@ -63,6 +63,10 @@ export async function setRankingVisibility(d: Deps, uid: string, show: boolean):
 export const monthStamp = (nowMs: number): string => new Date(nowMs - 5 * 3600 * 1000).toISOString().slice(0, 7).replace("-", "");
 
 /** Suma una solicitud exitosa al contador del mes (hora de Lima). */
+export async function userMonthlyUsage(d: Deps, uid: string, nowMs = Date.now()): Promise<number> {
+  return d.store.hget(`usage:${monthStamp(nowMs)}`, uid);
+}
+
 export async function recordUsage(d: Deps, uid: string, nowMs = Date.now()): Promise<void> {
   const key = `usage:${monthStamp(nowMs)}`;
   const n = await d.store.hincrby(key, uid, 1);

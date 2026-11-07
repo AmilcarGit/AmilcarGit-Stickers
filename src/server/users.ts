@@ -7,6 +7,7 @@ import { MAX_PASSWORD_LENGTH, hashPassword, verifyPassword } from "./password";
 import { revokeAllSessions } from "./session";
 import { hit } from "./store";
 import { newId, randomToken, sha256 } from "./tokens";
+import { completeReferral, prepareReferral } from "./rewards";
 
 export type UserRecord = {
   uid: string;
@@ -27,6 +28,8 @@ export type UserRecord = {
   avatarV?: number;
   /** Aparecer en el ranking público de uso (por defecto sí). */
   showInRanking?: boolean;
+  referralCode?: string;
+  referredBy?: string;
 };
 
 const VERIFY_TTL = 60 * 60 * 24;
@@ -64,7 +67,7 @@ export async function usernameAvailable(d: Deps, raw: string): Promise<boolean> 
 
 export async function registerUser(
   d: Deps,
-  input: { email: string; password: string; username: string; displayName: string },
+  input: { email: string; password: string; username: string; displayName: string; referralCode?: string },
   ip: string,
 ): Promise<{ user: UserRecord; emailSent: boolean }> {
   if (!(await hit(d.store, `rl:reg:${ip}`, 10, 3600))) {
@@ -84,6 +87,7 @@ export async function registerUser(
     throw new AppError(409, "Ese correo ya tiene una cuenta. Inicia sesión o recupera tu contraseña.");
   }
 
+  const referral = await prepareReferral(d, uid, input.referralCode);
   const user: UserRecord = {
     uid,
     email,
@@ -92,6 +96,8 @@ export async function registerUser(
     createdAt: Date.now(),
     passHash: await hashPassword(input.password),
     emailVerified: false,
+    referralCode: referral.referralCode,
+    ...(referral.referredBy ? { referredBy: referral.referredBy } : {}),
   };
   await d.store.set(`user:${uid}`, user);
   await d.store.zadd("users", user.createdAt, uid);
@@ -122,7 +128,9 @@ export async function verifyEmail(d: Deps, token: string): Promise<void> {
   const uid = await d.store.get<string>(key);
   const user = uid ? await getUser(d, uid) : null;
   if (!user) throw new AppError(400, "El enlace no es válido o ya venció. Pide uno nuevo desde tu panel.");
-  await d.store.set(`user:${user.uid}`, { ...user, emailVerified: true });
+  const verified = { ...user, emailVerified: true };
+  await d.store.set(`user:${user.uid}`, verified);
+  await completeReferral(d, verified);
   await d.store.del(key);
 }
 

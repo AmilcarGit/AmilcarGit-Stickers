@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useAuth, useToast } from "@/components/Providers";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { RequireAuth, VerifyBanner } from "@/components/Guards";
 import { Avatar } from "@/components/Avatar";
 import { VerifiedName } from "@/components/VerifiedName";
@@ -18,6 +18,7 @@ function DashboardInner() {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [fresh, setFresh] = useState<string | null>(null);
+  const freshInputRef = useRef<HTMLInputElement>(null);
   const [rewards, setRewards] = useState<RewardsData | null>(null);
   const [rewardBusy, setRewardBusy] = useState(false);
 
@@ -91,23 +92,19 @@ function DashboardInner() {
       }
       toast("Clave copiada al portapapeles.", "ok");
     } catch {
-      try {
-        const field = document.createElement("textarea");
-        field.value = text;
-        field.setAttribute("readonly", "");
-        field.style.position = "fixed";
-        field.style.opacity = "0";
-        field.style.pointerEvents = "none";
-        document.body.appendChild(field);
+      const field = freshInputRef.current;
+      if (field && field.value === text) {
         field.focus();
         field.select();
         field.setSelectionRange(0, field.value.length);
         const copied = document.execCommand("copy");
-        document.body.removeChild(field);
-        if (!copied) throw new Error("No se pudo copiar");
-        toast("Clave copiada al portapapeles.", "ok");
-      } catch {
-        toast("No se pudo copiar automáticamente. Mantén pulsada la clave para copiarla.", "error");
+        if (copied) {
+          toast("Clave copiada al portapapeles.", "ok");
+        } else {
+          toast("La clave quedó seleccionada. Mantén pulsado el campo y elige Copiar.", "error");
+        }
+      } else {
+        toast("No se pudo copiar. Selecciona la clave y cópiala manualmente.", "error");
       }
     }
   }
@@ -191,7 +188,7 @@ function DashboardInner() {
           {fresh && (
             <section className="yui-key-reveal" role="alert">
               <div><span className="yui-kicker">NUEVA CREDENCIAL</span><h2>Guarda tu API Key</h2><p>Por seguridad solo se muestra una vez. Si la pierdes, revócala y crea otra.</p></div>
-              <code>{fresh}</code>
+              <input ref={freshInputRef} className="input w-full font-mono text-sm" type="text" value={fresh} readOnly aria-label="API Key recién creada" autoComplete="off" spellCheck={false} onFocus={(event) => event.currentTarget.select()} onClick={(event) => event.currentTarget.select()} />
               <div className="flex flex-wrap gap-2"><button type="button" className="btn-primary" onClick={() => copy(fresh)}>Copiar clave</button><button type="button" className="btn-ghost" onClick={() => setFresh(null)}>Ya la guardé</button></div>
             </section>
           )}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RequireAdmin } from "@/components/Guards";
+import { VerifiedName } from "@/components/VerifiedName";
 import { useToast } from "@/components/Providers";
 import { createAdminKey, deleteAdminPlan, getAdminAudit, getAdminKeyUsage, getAdminUser, listAdminKeys, listAdminPlans, listUsers, revokeAdminKey, rotateAdminKey, saveAdminPlan, setUserPlan, updateAdminKey, updateAdminUser, giftUserPlan } from "@/lib/data";
 import type { AdminPlan, ApiKeyInfo, ApiKeyUsage } from "@/lib/data";
@@ -133,6 +134,23 @@ function AdminInner() {
       toast("Perfil administrativo actualizado.", "ok");
     } catch (err) {
       toast(err instanceof Error ? err.message : "No se pudieron guardar los cambios.", "error");
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  async function saveVerifiedBadge(value: "blue" | "gold" | null) {
+    if (!selectedUser || !canManageRoles || selectedUser.role === "admin") return;
+    setSavingProfile(true);
+    try {
+      const updated = await updateAdminUser(selectedUser.uid, { verifiedBadge: value });
+      setSelectedUser(updated);
+      setUsers((list) => list.map((x) => x.uid === updated.uid ? updated : x));
+      const detail = await getAdminUser(updated.uid);
+      setActivity(detail.activity);
+      toast(value === "blue" ? "Insignia azul asignada." : value === "gold" ? "Insignia dorada asignada." : "Insignia retirada.", "ok");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudo actualizar la insignia.", "error");
     } finally {
       setSavingProfile(false);
     }
@@ -413,7 +431,7 @@ function AdminInner() {
                             {(u.displayName || u.username || "?").slice(0, 1).toUpperCase()}
                           </span>
                           <span className="min-w-0">
-                            <span className="block truncate font-semibold text-ink">{u.displayName || u.username}</span>
+                            <span className="block truncate font-semibold text-ink"><VerifiedName name={u.displayName || u.username} badge={u.verifiedBadge} /></span>
                             <span className="block truncate text-xs text-muted">@{u.username}</span>
                           </span>
                         </div>
@@ -472,12 +490,34 @@ function AdminInner() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">Ficha administrativa</p>
-              <h2 id="profile-admin-title" className="mt-1 text-xl font-bold">{selectedUser.displayName} <span className="text-sm font-normal text-muted">@{selectedUser.username}</span></h2>
+              <h2 id="profile-admin-title" className="mt-1 text-xl font-bold"><VerifiedName name={selectedUser.displayName} badge={selectedUser.verifiedBadge} /> <span className="text-sm font-normal text-muted">@{selectedUser.username}</span></h2>
               <p className="mt-1 text-sm text-muted">{selectedUser.email} · {selectedUser.emailVerified ? "Correo verificado" : "Correo pendiente"} · ID: {selectedUser.uid}</p>
               <p className="mt-1 text-xs text-muted">Estado: {selectedUser.status === "suspended" ? "Suspendido" : "Activo"} · Rol: {selectedUser.role}</p>
             </div>
             <button type="button" onClick={() => setSelectedUser(null)} className="rounded-lg border border-line px-3 py-2 text-sm text-muted hover:bg-surface2">Cerrar</button>
           </div>
+          {canManageRoles && (
+            <div className="mt-5 rounded-xl border border-sky-400/20 bg-sky-400/5 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold">Insignia de verificación</h3>
+                  <p className="mt-1 text-xs text-muted">Solo el administrador principal puede asignar o retirar esta insignia pública.</p>
+                </div>
+                <select
+                  aria-label="Insignia de verificación del usuario"
+                  value={selectedUser.verifiedBadge ?? ""}
+                  disabled={savingProfile || selectedUser.role === "admin"}
+                  onChange={(e) => void saveVerifiedBadge(e.target.value === "blue" || e.target.value === "gold" ? e.target.value : null)}
+                  className="min-h-10 rounded-lg border border-line bg-bg px-3 text-sm text-ink disabled:opacity-50"
+                >
+                  <option value="">Sin insignia</option>
+                  <option value="blue">✓ Verificación azul</option>
+                  <option value="gold">✓ Verificación dorada</option>
+                </select>
+              </div>
+              {selectedUser.role === "admin" && <p className="mt-2 text-xs text-muted">Las cuentas de administrador están protegidas.</p>}
+            </div>
+          )}
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label className="text-sm text-muted">Límite diario (vacío = plan)
               <input inputMode="numeric" value={dailyLimit} onChange={(e) => setDailyLimit(e.target.value)} placeholder="Automático" className="mt-1 min-h-10 w-full rounded-lg border border-line bg-bg px-3 text-ink outline-none focus:border-violet-400" />

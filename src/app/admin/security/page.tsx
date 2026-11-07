@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import Link from "next/link";
 import { RequireAdmin } from "@/components/Guards";
 import { useToast } from "@/components/Providers";
@@ -31,7 +32,7 @@ function SecurityInner() {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
-  async function createBlock(event: React.FormEvent<HTMLFormElement>) {
+  async function createBlock(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
     try {

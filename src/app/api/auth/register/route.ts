@@ -8,7 +8,7 @@ export const POST = route(async ({ d, req, ip }) => {
   const b = await readJson(req, 10_000);
   const { user, emailSent } = await registerUser(
     d,
-    { email: String(b.email ?? ""), password: String(b.password ?? ""), username: String(b.username ?? ""), displayName: String(b.displayName ?? "") },
+    { email: String(b.email ?? ""), password: String(b.password ?? ""), username: String(b.username ?? ""), displayName: String(b.displayName ?? ""), referralCode: String(b.referralCode ?? "") },
     ip,
   );
   const s = await createSession(d, user.uid);

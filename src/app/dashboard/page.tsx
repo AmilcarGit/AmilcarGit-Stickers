@@ -137,6 +137,10 @@ function DashboardInner() {
             <h2 className="font-bold">Ranking de puntos</h2>
             {rewards.leaderboard.length ? <ol className="mt-3 space-y-2">{rewards.leaderboard.map((entry) => <li key={entry.username} className="flex items-center justify-between gap-3 text-sm"><span>{entry.rank}. {entry.displayName} <span className="text-muted">@{entry.username}</span></span><strong>{entry.points} pts</strong></li>)}</ol> : <p className="mt-2 text-sm text-muted">Aún no hay participantes.</p>}
           </div>
+          <div className="card">
+            <h2 className="font-bold">Historial de puntos</h2>
+            {rewards.history.length ? <ul className="mt-3 space-y-2">{rewards.history.slice(0, 8).map((entry, index) => <li key={index} className="flex flex-wrap items-center justify-between gap-2 border-b border-line/60 py-2 text-sm last:border-0"><span>{entry.reason}</span><strong className="text-emerald-400">+{entry.amount} pts</strong></li>)}</ul> : <p className="mt-2 text-sm text-muted">Tus movimientos aparecerán aquí.</p>}
+          </div>
         </section>
       )}
 

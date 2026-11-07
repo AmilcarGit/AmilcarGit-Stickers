@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import Link from "next/link";
 import { RequireAuth, VerifyBanner } from "@/components/Guards";
 import { useAuth, useToast } from "@/components/Providers";
 import { Avatar } from "@/components/Avatar";
@@ -203,7 +204,7 @@ function ProfileInner() {
         </>}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
           <div><p className="font-semibold">Tus claves API</p><p className="text-xs text-muted">{keys.length} de 5 claves activas</p></div>
-          <a href="/dashboard" className="btn-ghost">Administrar claves</a>
+          <Link href="/dashboard" className="btn-ghost">Administrar claves</Link>
         </div>
         {!dataBusy && keys.length === 0 && <p className="text-sm text-muted">Todavía no has creado claves API.</p>}
         {keys.length > 0 && <ul className="space-y-2">{keys.map((key) => <li key={key.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line p-3 text-sm"><span className="font-medium">{key.name}</span><code className="text-xs text-muted">{key.prefix}…</code></li>)}</ul>}
@@ -215,7 +216,7 @@ function ProfileInner() {
           <div className="grid gap-2 sm:grid-cols-2">{rewards.badges.map((badge) => <div key={badge.id} className={"rounded-xl border p-3 " + (badge.unlocked ? "border-brand/50 bg-brand/10" : "border-line opacity-65")}><p className="font-semibold">{badge.unlocked ? "🏅" : "🔒"} {badge.label}</p><p className="mt-1 text-xs text-muted">{badge.description}</p></div>)}</div>
           <div className="rounded-xl border border-line p-4"><p className="font-semibold">Actividad reciente de puntos</p>{rewards.history.length ? <ul className="mt-2 divide-y divide-line/70">{rewards.history.slice(0, 5).map((entry, index) => <li key={entry.at + "-" + index} className="flex flex-wrap justify-between gap-2 py-2 text-sm"><span>{entry.reason}</span><strong className="text-ok">+{entry.amount} pts</strong></li>)}</ul> : <p className="mt-2 text-sm text-muted">Tus movimientos aparecerán aquí.</p>}</div>
         </> : <p className="text-sm text-muted">{dataBusy ? "Cargando logros…" : "No se pudieron cargar tus logros en este momento."}</p>}
-        <a href="/dashboard" className="btn-ghost w-fit">Ver todas las recompensas</a>
+        <Link href="/dashboard" className="btn-ghost w-fit">Ver todas las recompensas</Link>
       </section>
 
       <section className="card space-y-3">

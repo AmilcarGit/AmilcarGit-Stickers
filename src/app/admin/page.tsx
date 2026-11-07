@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RequireAdmin } from "@/components/Guards";
 import { VerifiedName } from "@/components/VerifiedName";
+import { AdminBadges } from "@/components/AdminBadges";
 import { useToast } from "@/components/Providers";
 import { createAdminKey, deleteAdminPlan, getAdminAudit, getAdminKeyUsage, getAdminUser, listAdminKeys, listAdminPlans, listUsers, revokeAdminKey, rotateAdminKey, saveAdminPlan, setUserPlan, updateAdminKey, updateAdminUser, giftUserPlan } from "@/lib/data";
 import type { AdminPlan, ApiKeyInfo, ApiKeyUsage } from "@/lib/data";
-import type { UserRow } from "@/lib/types";
+import type { AdminBadge, UserRow } from "@/lib/types";
 
 function formatDate(value: number) {
   return new Intl.DateTimeFormat("es-PE", {
@@ -32,6 +33,11 @@ function AdminInner() {
   const [role, setRole] = useState<"user" | "moderator">("user");
   const [canManageRoles, setCanManageRoles] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [badgePreset, setBadgePreset] = useState("vip");
+  const [badgeLabel, setBadgeLabel] = useState("VIP");
+  const [badgeIcon, setBadgeIcon] = useState("♛");
+  const [badgeColor, setBadgeColor] = useState<AdminBadge["color"]>("gold");
+  const [badgeReason, setBadgeReason] = useState("");
   const [audit, setAudit] = useState<{ at: number; actor: string; target: string; action: string; detail: string }[]>([]);
   const [adminKeys, setAdminKeys] = useState<ApiKeyInfo[]>([]);
   const [adminPlans, setAdminPlans] = useState<AdminPlan[]>([]);
@@ -154,6 +160,55 @@ function AdminInner() {
     } finally {
       setSavingProfile(false);
     }
+  }
+
+
+  async function addAdminBadge() {
+    if (!selectedUser || !canManageRoles || selectedUser.role === "admin") return;
+    const presets: Record<string, { label: string; icon: string; color: AdminBadge["color"] }> = {
+      vip: { label: "VIP", icon: "♛", color: "gold" },
+      developer: { label: "Desarrollador", icon: "⌘", color: "blue" },
+      collaborator: { label: "Colaborador", icon: "◆", color: "purple" },
+      founder: { label: "Fundador", icon: "♥", color: "pink" },
+      special: { label: "Especial", icon: "✿", color: "green" },
+    };
+    const preset = presets[badgePreset];
+    const label = (preset?.label ?? badgeLabel).trim();
+    const icon = (preset?.icon ?? badgeIcon).trim();
+    const color = preset?.color ?? badgeColor;
+    if (!label || !icon) return toast("Escribe un nombre y un símbolo para la insignia.", "error");
+    const current = selectedUser.adminBadges ?? [];
+    const id = preset ? badgePreset : "custom-" + Date.now();
+    if (current.some((badge) => badge.id === id)) return toast("Ese usuario ya tiene esa insignia.", "error");
+    const next = [...current, { id, label, icon, color, reason: badgeReason.trim(), awardedAt: Date.now(), awardedBy: "" }];
+    setSavingProfile(true);
+    try {
+      const updated = await updateAdminUser(selectedUser.uid, { adminBadges: next });
+      setSelectedUser(updated);
+      setUsers((list) => list.map((item) => item.uid === updated.uid ? updated : item));
+      setBadgeReason("");
+      toast("Insignia especial entregada.", "ok");
+      const detail = await getAdminUser(updated.uid);
+      setActivity(detail.activity);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudo entregar la insignia.", "error");
+    } finally { setSavingProfile(false); }
+  }
+
+  async function removeAdminBadge(id: string) {
+    if (!selectedUser || !canManageRoles || selectedUser.role === "admin") return;
+    const next = (selectedUser.adminBadges ?? []).filter((badge) => badge.id !== id);
+    setSavingProfile(true);
+    try {
+      const updated = await updateAdminUser(selectedUser.uid, { adminBadges: next });
+      setSelectedUser(updated);
+      setUsers((list) => list.map((item) => item.uid === updated.uid ? updated : item));
+      toast("Insignia retirada.", "ok");
+      const detail = await getAdminUser(updated.uid);
+      setActivity(detail.activity);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudo retirar la insignia.", "error");
+    } finally { setSavingProfile(false); }
   }
 
   async function toggleSuspension() {
@@ -516,6 +571,29 @@ function AdminInner() {
                 </select>
               </div>
               {selectedUser.role === "admin" && <p className="mt-2 text-xs text-muted">Las cuentas de administrador están protegidas.</p>}
+            </div>
+          )}
+          {canManageRoles && (
+            <div className="mt-5 rounded-xl border border-violet-400/20 bg-violet-400/5 p-4">
+              <h3 className="font-semibold">Insignias especiales</h3>
+              <p className="mt-1 text-xs text-muted">Entrega reconocimientos que aparecerán en el perfil público del usuario. Solo el administrador principal puede gestionarlos.</p>
+              <div className="mt-3"><AdminBadges badges={selectedUser.adminBadges} /></div>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <label className="text-xs text-muted">Tipo de insignia
+                  <select value={badgePreset} onChange={(e) => { setBadgePreset(e.target.value); const defaults: Record<string, {label:string;icon:string;color:AdminBadge["color"]}> = {vip:{label:"VIP",icon:"♛",color:"gold"},developer:{label:"Desarrollador",icon:"⌘",color:"blue"},collaborator:{label:"Colaborador",icon:"◆",color:"purple"},founder:{label:"Fundador",icon:"♥",color:"pink"},special:{label:"Especial",icon:"✿",color:"green"}}; const v=defaults[e.target.value]; if(v){setBadgeLabel(v.label);setBadgeIcon(v.icon);setBadgeColor(v.color);} }} className="mt-1 min-h-10 w-full rounded-lg border border-line bg-bg px-3 text-ink">
+                    <option value="vip">VIP</option><option value="developer">Desarrollador</option><option value="collaborator">Colaborador</option><option value="founder">Fundador</option><option value="special">Especial</option><option value="custom">Personalizada</option>
+                  </select>
+                </label>
+                {badgePreset === "custom" && <>
+                  <label className="text-xs text-muted">Nombre visible<input value={badgeLabel} onChange={(e) => setBadgeLabel(e.target.value)} maxLength={28} className="mt-1 min-h-10 w-full rounded-lg border border-line bg-bg px-3 text-ink" placeholder="Ej. Leyenda" /></label>
+                  <label className="text-xs text-muted">Símbolo<input value={badgeIcon} onChange={(e) => setBadgeIcon(e.target.value)} maxLength={8} className="mt-1 min-h-10 w-full rounded-lg border border-line bg-bg px-3 text-ink" placeholder="★" /></label>
+                  <label className="text-xs text-muted">Color<select value={badgeColor} onChange={(e) => setBadgeColor(e.target.value as AdminBadge["color"])} className="mt-1 min-h-10 w-full rounded-lg border border-line bg-bg px-3 text-ink"><option value="gold">Dorado</option><option value="blue">Azul</option><option value="purple">Morado</option><option value="pink">Rosa</option><option value="green">Verde</option><option value="rainbow">Arcoíris</option></select></label>
+                </>}
+                <label className="text-xs text-muted sm:col-span-2">Motivo (opcional)<input value={badgeReason} onChange={(e) => setBadgeReason(e.target.value)} maxLength={120} className="mt-1 min-h-10 w-full rounded-lg border border-line bg-bg px-3 text-ink" placeholder="Motivo del reconocimiento" /></label>
+              </div>
+              <button type="button" onClick={() => void addAdminBadge()} disabled={savingProfile || selectedUser.role === "admin"} className="mt-3 min-h-10 rounded-lg bg-violet-500 px-4 text-sm font-semibold text-white disabled:opacity-50">Entregar insignia</button>
+              {(selectedUser.adminBadges ?? []).length > 0 && <div className="mt-4 space-y-2">{selectedUser.adminBadges?.map((badge) => <div key={badge.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line p-2"><AdminBadges badges={[badge]} /><button type="button" onClick={() => void removeAdminBadge(badge.id)} disabled={savingProfile || selectedUser.role === "admin"} className="text-xs font-semibold text-rose-300 disabled:opacity-40">Retirar</button></div>)}</div>}
+              {selectedUser.role === "admin" && <p className="mt-2 text-xs text-muted">Las cuentas administrativas están protegidas. La insignia AmilcarGit se muestra automáticamente en el perfil del creador.</p>}
             </div>
           )}
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

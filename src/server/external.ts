@@ -208,7 +208,7 @@ export async function searchCharacters(f: Fetcher, query: string, limit: number)
 
 /** Países y territorios mediante REST Countries v3.1, sin API key. */
 export async function searchCountries(f: Fetcher, query: string, limit: number) {
-  const data = arr(await getJson(f, `https://restcountries.com/v3.1/name/${q(query)}?fields=name,capital,region,subregion,population,cca2,cca3,flags,languages,currencies`));
+  const data = arr(await getJson(f, `https://restcountries.com/v3.1/name/${q(query)}?fields=name,capital,region,subregion,population,cca2,cca3,flags,languages,currencies`, true));
   return data.slice(0, limit).map((raw) => {
     const r = obj(raw);
     const name = obj(r.name);

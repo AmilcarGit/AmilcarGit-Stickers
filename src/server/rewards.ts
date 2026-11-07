@@ -23,14 +23,19 @@ async function award(d: Deps, uid: string, amount: number, reason: string, once:
   return true;
 }
 
-export async function prepareReferral(d: Deps, uid: string, rawCode?: unknown): Promise<string> {
-  const code = randomBytes(5).toString("hex").toUpperCase();
-  await d.store.set(`refcode:${code}`, uid, { nx: true });
+export async function prepareReferral(d: Deps, uid: string, rawCode?: unknown): Promise<{ referralCode: string; referredBy?: string }> {
+  let code = "";
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = randomBytes(5).toString("hex").toUpperCase();
+    if (await d.store.set(`refcode:${candidate}`, uid, { nx: true })) { code = candidate; break; }
+  }
+  if (!code) throw new AppError(503, "No se pudo generar tu código de invitación. Inténtalo otra vez.");
+  let referredBy: string | undefined;
   if (typeof rawCode === "string" && /^[A-Z0-9]{10}$/i.test(rawCode.trim())) {
     const referrer = await d.store.get<string>(`refcode:${rawCode.trim().toUpperCase()}`);
-    if (referrer && referrer !== uid) return referrer;
+    if (referrer && referrer !== uid) referredBy = referrer;
   }
-  return "";
+  return { referralCode: code, ...(referredBy ? { referredBy } : {}) };
 }
 
 export async function completeReferral(d: Deps, user: UserRecord): Promise<void> {

@@ -57,6 +57,8 @@ function ProfileInner() {
       }
       if (rewardResult.status === "fulfilled") setRewards(rewardResult.value);
       else toast(rewardResult.reason instanceof Error ? rewardResult.reason.message : "No se pudieron cargar tus recompensas.", "error");
+      if (statsResult.status === "fulfilled") setRequestsThisMonth(statsResult.value.requestsThisMonth);
+      else toast(statsResult.reason instanceof Error ? statsResult.reason.message : "No se pudieron cargar tus estadísticas.", "error");
       setDataBusy(false);
     });
     return () => { active = false; };

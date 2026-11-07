@@ -12,6 +12,8 @@ export type MeInfo = {
   /** 0 = sin foto; si no, versión para refrescar la caché. */
   avatarV: number;
   showInRanking: boolean;
+  bio?: string;
+  location?: string;
 };
 
 /** Fila del registro de usuarios que ve un moderador. */

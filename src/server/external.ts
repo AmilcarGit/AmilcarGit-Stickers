@@ -6,7 +6,7 @@ export type Fetcher = typeof fetch;
 const MAX_BODY = 1_500_000;
 const UA = "YuiApi/1.0 (+https://yuiapi.vercel.app)";
 
-async function getJson(fetcher: Fetcher, url: string): Promise<unknown> {
+async function getJson(fetcher: Fetcher, url: string, allowNotFound = false): Promise<unknown> {
   let res: Response;
   try {
     res = await fetcher(url, { headers: { "user-agent": UA, accept: "application/json" }, signal: AbortSignal.timeout(8000) });
@@ -14,6 +14,7 @@ async function getJson(fetcher: Fetcher, url: string): Promise<unknown> {
     throw new AppError(502, "El servicio externo no respondió a tiempo. Inténtalo otra vez.");
   }
   if (res.status === 429) throw new AppError(503, "El servicio externo está limitando las consultas. Inténtalo en unos minutos.");
+  if (res.status === 404 && allowNotFound) return null;
   if (!res.ok) throw new AppError(502, "El servicio externo devolvió un error.");
   const text = await res.text();
   if (text.length > MAX_BODY) throw new AppError(502, "La respuesta del servicio externo es demasiado grande.");
@@ -154,6 +155,129 @@ export async function searchOpenImages(f: Fetcher, query: string, limit: number)
       licenseUrl: str(r.license_url),
       source: str(r.source),
       page: str(r.foreign_landing_url),
+    };
+  });
+}
+
+
+/** Series y programas mediante la API pública gratuita de TVmaze (con atribución CC BY-SA). */
+export async function searchShows(f: Fetcher, query: string, limit: number) {
+  const data = arr(await getJson(f, `https://api.tvmaze.com/search/shows?q=${q(query)}`));
+  return data.slice(0, limit).map((raw) => {
+    const item = obj(raw);
+    const show = obj(item.show);
+    const image = obj(show.image);
+    const genres = arr(show.genres).filter((v): v is string => typeof v === "string");
+    return {
+      id: num(show.id),
+      title: str(show.name),
+      type: str(show.type),
+      language: str(show.language),
+      genres,
+      status: str(show.status),
+      premiered: str(show.premiered),
+      summary: str(show.summary)?.replace(/<[^>]+>/g, "") ?? null,
+      image: str(image.medium) ?? str(image.original),
+      url: str(show.url),
+      score: num(item.score),
+    };
+  });
+}
+
+/** Personajes de Rick and Morty; API pública sin clave. */
+export async function searchCharacters(f: Fetcher, query: string, limit: number) {
+  const data = obj(await getJson(f, `https://rickandmortyapi.com/api/character/?name=${q(query)}`, true));
+  return arr(data.results).slice(0, limit).map((raw) => {
+    const r = obj(raw);
+    const origin = obj(r.origin);
+    const location = obj(r.location);
+    return {
+      id: num(r.id),
+      name: str(r.name),
+      status: str(r.status),
+      species: str(r.species),
+      type: str(r.type),
+      gender: str(r.gender),
+      origin: str(origin.name),
+      location: str(location.name),
+      image: str(r.image),
+      url: str(r.url),
+    };
+  });
+}
+
+/** Países y territorios mediante REST Countries v3.1, sin API key. */
+export async function searchCountries(f: Fetcher, query: string, limit: number) {
+  const data = arr(await getJson(f, `https://restcountries.com/v3.1/name/${q(query)}?fields=name,capital,region,subregion,population,cca2,cca3,flags,languages,currencies`));
+  return data.slice(0, limit).map((raw) => {
+    const r = obj(raw);
+    const name = obj(r.name);
+    const flags = obj(r.flags);
+    const currencies = obj(r.currencies);
+    const languages = obj(r.languages);
+    return {
+      code: str(r.cca2),
+      name: str(name.common),
+      officialName: str(name.official),
+      capital: arr(r.capital).filter((v): v is string => typeof v === "string"),
+      region: str(r.region),
+      subregion: str(r.subregion),
+      population: num(r.population),
+      flag: str(flags.png) ?? str(flags.svg),
+      languages: Object.values(languages).filter((v): v is string => typeof v === "string"),
+      currencies: Object.entries(currencies).map(([code, value]) => ({ code, name: str(obj(value).name), symbol: str(obj(value).symbol) })),
+    };
+  });
+}
+
+/** Publicaciones científicas y DOI mediante Crossref REST API, sin registro ni clave. */
+export async function searchPapers(f: Fetcher, query: string, limit: number) {
+  const data = obj(await getJson(f, `https://api.crossref.org/works?query.bibliographic=${q(query)}&rows=${limit}`));
+  const message = obj(data.message);
+  return arr(message.items).map((raw) => {
+    const r = obj(raw);
+    const authors = arr(r.author).map((author) => {
+      const a = obj(author);
+      return [str(a.given), str(a.family)].filter(Boolean).join(" ") || null;
+    }).filter((v): v is string => Boolean(v));
+    const title = arr(r.title);
+    const published = obj(r.published);
+    const dateParts = arr(published["date-parts"]);
+    const firstDate = arr(dateParts[0]);
+    return {
+      title: str(title[0]),
+      authors,
+      publisher: str(r.publisher),
+      journal: str(arr(r["container-title"])[0]),
+      year: num(firstDate[0]),
+      doi: str(r.DOI),
+      url: str(r.URL),
+      type: str(r.type),
+    };
+  });
+}
+
+/** Libros de dominio público del catálogo Gutendex / Project Gutenberg, sin clave. */
+export async function searchEbooks(f: Fetcher, query: string, limit: number) {
+  const data = obj(await getJson(f, `https://gutendex.com/books/?search=${q(query)}`));
+  return arr(data.results).slice(0, limit).map((raw) => {
+    const r = obj(raw);
+    const formats = obj(r.formats);
+    const authors = arr(r.authors).map((author) => {
+      const a = obj(author);
+      return str(a.name);
+    }).filter((v): v is string => Boolean(v));
+    return {
+      id: num(r.id),
+      title: str(r.title),
+      authors,
+      languages: arr(r.languages).filter((v): v is string => typeof v === "string"),
+      subjects: arr(r.subjects).filter((v): v is string => typeof v === "string").slice(0, 8),
+      downloads: num(r.download_count),
+      cover: str(formats["image/jpeg"]),
+      textHtml: str(formats["text/html"]),
+      epub: str(formats["application/epub+zip"]),
+      plainText: str(formats["text/plain; charset=utf-8"]) ?? str(formats["text/plain"]),
     };
   });
 }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RequireAdmin } from "@/components/Guards";
 import { useToast } from "@/components/Providers";
-import { listUsers, setUserPlan } from "@/lib/data";
+import { getAdminUser, listUsers, setUserPlan, updateAdminUser } from "@/lib/data";
 import type { UserRow } from "@/lib/types";
 
 function formatDate(value: number) {
@@ -22,7 +22,7 @@ function AdminInner() {
   const [loaded, setLoaded] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [changing, setChanging] = useState<string | null>(null);
+  const [changing, setChanging] = useState<string | null>(null);\n  const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);\n  const [activity, setActivity] = useState<{ at: number; type: string; detail: string }[]>([]);\n  const [dailyLimit, setDailyLimit] = useState("");\n  const [minuteLimit, setMinuteLimit] = useState("");\n  const [role, setRole] = useState<"user" | "moderator">("user");\n  const [savingProfile, setSavingProfile] = useState(false);
 
   const loadUsers = useCallback(async (offset: number) => {
     try {
@@ -67,6 +67,64 @@ function AdminInner() {
       toast(err instanceof Error ? err.message : "No se pudo cambiar el plan.", "error");
     } finally {
       setChanging(null);
+    }
+  }
+
+  async function openUser(u: UserRow) {
+    setSelectedUser(u);
+    setActivity([]);
+    try {
+      const detail = await getAdminUser(u.uid);
+      setSelectedUser(detail.user);
+      setActivity(detail.activity);
+      setDailyLimit(detail.user.dailyLimit == null ? "" : String(detail.user.dailyLimit));
+      setMinuteLimit(detail.user.minuteLimit == null ? "" : String(detail.user.minuteLimit));
+      setRole(detail.user.role === "moderator" ? "moderator" : "user");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudo cargar el perfil.", "error");
+    }
+  }
+
+  async function saveUserSettings() {
+    if (!selectedUser) return;
+    const daily = dailyLimit.trim() ? Number(dailyLimit) : null;
+    const minute = minuteLimit.trim() ? Number(minuteLimit) : null;
+    if ((daily !== null && (!Number.isInteger(daily) || daily < 1 || daily > 1000000)) ||
+        (minute !== null && (!Number.isInteger(minute) || minute < 1 || minute > 10000))) {
+      toast("Revisa los límites personalizados.", "error");
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      const updated = await updateAdminUser(selectedUser.uid, { dailyLimit: daily, minuteLimit: minute, role });
+      setSelectedUser(updated);
+      setUsers((list) => list.map((x) => x.uid === updated.uid ? updated : x));
+      const detail = await getAdminUser(updated.uid);
+      setActivity(detail.activity);
+      toast("Perfil administrativo actualizado.", "ok");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudieron guardar los cambios.", "error");
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  async function toggleSuspension() {
+    if (!selectedUser) return;
+    const status = selectedUser.status === "suspended" ? "active" : "suspended";
+    if (!window.confirm(status === "suspended" ? "¿Suspender esta cuenta? Se cerrarán sus sesiones y se bloqueará su API." : "¿Reactivar esta cuenta?")) return;
+    setSavingProfile(true);
+    try {
+      const updated = await updateAdminUser(selectedUser.uid, { status });
+      setSelectedUser(updated);
+      setUsers((list) => list.map((x) => x.uid === updated.uid ? updated : x));
+      const detail = await getAdminUser(updated.uid);
+      setActivity(detail.activity);
+      toast(status === "suspended" ? "Cuenta suspendida." : "Cuenta reactivada.", "ok");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudo cambiar el estado.", "error");
+    } finally {
+      setSavingProfile(false);
     }
   }
 
@@ -204,7 +262,7 @@ function AdminInner() {
                     <th scope="col" className="px-4 py-3 font-semibold">Correo</th>
                     <th scope="col" className="px-4 py-3 font-semibold">Verificación</th>
                     <th scope="col" className="px-4 py-3 font-semibold">Plan API</th>
-                    <th scope="col" className="px-4 py-3 font-semibold">Registro</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Registro</th>\n                    <th scope="col" className="px-4 py-3 font-semibold">Gestión</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -248,7 +306,7 @@ function AdminInner() {
                         </select>
                         {changing === u.uid && <span className="ml-2 text-xs text-muted">Guardando…</span>}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-muted">{formatDate(u.createdAt)}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-muted">{formatDate(u.createdAt)}</td>\n                      <td className="px-4 py-4"><button type="button" onClick={() => void openUser(u)} className="rounded-lg border border-violet-400/30 bg-violet-400/10 px-3 py-2 text-xs font-semibold text-violet-200 hover:bg-violet-400/20">Gestionar</button></td>
                     </tr>
                   ))}
                 </tbody>

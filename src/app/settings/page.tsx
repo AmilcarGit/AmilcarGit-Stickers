@@ -5,6 +5,7 @@ import Link from "next/link";
 import { RequireAuth, VerifyBanner } from "@/components/Guards";
 import { useAuth, useToast } from "@/components/Providers";
 import { Avatar } from "@/components/Avatar";
+import { VerifiedName } from "@/components/VerifiedName";
 import { deleteAvatar, fetchMyStats, fetchRewards, listApiKeys, saveProfile, uploadAvatar, type ApiKeyInfo, type ApiQuota, type RewardsData } from "@/lib/data";
 
 const LEVELS = [
@@ -125,7 +126,7 @@ function ProfileInner() {
         </div>
         <div className="yui-profile-hero-user">
           <div className="yui-profile-avatar-ring"><Avatar username={user.username} name={user.displayName} v={user.avatarV} size={104} /></div>
-          <strong>{user.displayName}</strong>
+          <strong><VerifiedName name={user.displayName} badge={user.verifiedBadge} /></strong>
           <span>{user.admin ? "Administradora" : "Miembro YuiAPI"}</span>
           <b>{level.name}</b>
         </div>

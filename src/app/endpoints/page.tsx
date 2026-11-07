@@ -5,8 +5,10 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/Providers";
 import { ENDPOINTS, GROUPS, buildUrl, curlFor, jsFor, pythonFor, type Endpoint } from "@/lib/endpoints";
 
+type StickerItem = { id: string | null; title: string | null; gif: string | null; webp: string | null; page: string | null };
+
 type Result =
-  | { kind: "json"; status: number; text: string; remaining: string | null }
+  | { kind: "json"; status: number; text: string; remaining: string | null; stickers?: StickerItem[] }
   | { kind: "image"; status: number; url: string; filename: string; remaining: string | null }
   | { kind: "file"; status: number; url: string; filename: string; remaining: string | null }
   | { kind: "error"; message: string };
@@ -94,12 +96,19 @@ export default function EndpointsPage() {
       } else {
         const raw = await res.text();
         let formatted = raw;
+        let stickers: StickerItem[] | undefined;
         try {
-          formatted = JSON.stringify(JSON.parse(raw), null, 2);
+          const parsed: unknown = JSON.parse(raw);
+          formatted = JSON.stringify(parsed, null, 2);
+          if (selected.id === "sticker-search" && parsed && typeof parsed === "object" && "results" in parsed && Array.isArray(parsed.results)) {
+            stickers = parsed.results.filter((item): item is StickerItem =>
+              !!item && typeof item === "object" && ("webp" in item || "gif" in item),
+            );
+          }
         } catch {
           // La respuesta no es JSON.
         }
-        setResult({ kind: "json", status: res.status, text: formatted, remaining });
+        setResult({ kind: "json", status: res.status, text: formatted, remaining, stickers });
       }
     } catch {
       setResult({ kind: "error", message: "No se pudo conectar con la API." });
@@ -218,7 +227,33 @@ export default function EndpointsPage() {
                     <a href={result.url} download={result.filename} className="btn-primary mt-3 inline-flex">Descargar archivo</a>
                   </div>
                 )}
-                {result.kind === "json" && <pre className="max-h-96 overflow-auto rounded-xl bg-surface2 p-3 text-xs">{result.text}</pre>}
+                {result.kind === "json" && result.stickers && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold">Stickers encontrados ({result.stickers.length})</h4>
+                    {result.stickers.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        {result.stickers.map((sticker, index) => {
+                          const preview = sticker.webp || sticker.gif;
+                          return (
+                            <article key={sticker.id ?? index} className="overflow-hidden rounded-xl border border-line bg-surface2">
+                              {preview ? (
+                                <a href={sticker.page || preview} target="_blank" rel="noreferrer" className="checker flex aspect-square items-center justify-center p-3">
+                                  <img src={preview} alt={sticker.title || "Sticker de GIPHY"} loading="lazy" className="max-h-full max-w-full object-contain" />
+                                </a>
+                              ) : <div className="flex aspect-square items-center justify-center text-xs text-muted">Vista previa no disponible</div>}
+                              <div className="space-y-2 p-2">
+                                <p className="line-clamp-2 text-xs">{sticker.title || "Sticker"}</p>
+                                {sticker.page && <a href={sticker.page} target="_blank" rel="noreferrer" className="text-xs text-brand underline">Abrir en GIPHY</a>}
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    ) : <p className="text-sm text-muted">No se encontraron stickers para esa búsqueda.</p>}
+                    <p className="text-xs text-muted">Powered by GIPHY</p>
+                  </div>
+                )}
+                {result.kind === "json" && <details className="rounded-xl border border-line p-3"><summary className="cursor-pointer text-sm font-semibold">Ver respuesta JSON</summary><pre className="mt-3 max-h-96 overflow-auto rounded-xl bg-surface2 p-3 text-xs">{result.text}</pre></details>}
               </div>
             )}
           </div>

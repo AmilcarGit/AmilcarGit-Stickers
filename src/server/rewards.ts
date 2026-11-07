@@ -13,16 +13,6 @@ const yesterday = (stamp: string) => {
 
 export type RewardBadge = { id: string; label: string; description: string; unlocked: boolean };
 
-async function award(d: Deps, uid: string, amount: number, reason: string, once: string, now = Date.now()): Promise<boolean> {
-  if (!(await d.store.set(`rewards:once:${once}`, "1", { nx: true }))) return false;
-  const balance = await d.store.hincrby("rewards:balances", uid, amount);
-  await d.store.zadd("rewards:leaderboard", balance, uid);
-  const id = randomBytes(8).toString("hex");
-  await d.store.set(`rewards:entry:${id}`, { at: now, amount, reason, balance });
-  await d.store.zadd(`rewards:history:${uid}`, now, id);
-  return true;
-}
-
 export async function prepareReferral(d: Deps, uid: string, rawCode?: unknown): Promise<{ referralCode: string; referredBy?: string }> {
   let code = "";
   for (let attempt = 0; attempt < 5; attempt++) {

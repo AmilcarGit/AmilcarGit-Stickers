@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export const maxDuration = 20;
 export const OPTIONS = preflight;
 
-const MAX_UPLOAD = 8 * 1024 * 1024;
+const MAX_UPLOAD = 4 * 1024 * 1024;
 const TOOLS = [
   "qr", "hash", "uuid", "base64", "password",
   "json-format", "json-validate", "url-encode", "url-decode",

@@ -1,6 +1,5 @@
-import type { MeInfo, UserProfile, UserRow } from "@/lib/types";
+import type { MeInfo, UserRow } from "@/lib/types";
 import { normalizeUsername, validateEmail, validatePassword, validateUsername } from "@/lib/validators";
-import { isOwnBlobUrl } from "./blob-url";
 import type { Deps } from "./deps";
 import { resetMail, verificationMail } from "./emails";
 import { AppError, ConfigError } from "./errors";
@@ -14,12 +13,7 @@ export type UserRecord = {
   email: string;
   username: string;
   displayName: string;
-  bio: string;
-  photoURL: string;
-  profilePublic: boolean;
   createdAt: number;
-  stickerCount: number;
-  packCount: number;
   passHash: string;
   emailVerified: boolean;
   /** Plan de la API (por defecto «free»). Solo lo cambia un moderador. */
@@ -32,22 +26,8 @@ const lc = (s: string) => s.trim().toLowerCase();
 
 export const isAdmin = (d: Deps, u: UserRecord): boolean => u.emailVerified && d.adminEmails.includes(u.email);
 
-export function toProfile(u: UserRecord): UserProfile {
-  return {
-    uid: u.uid,
-    username: u.username,
-    displayName: u.displayName,
-    bio: u.bio,
-    photoURL: u.photoURL,
-    profilePublic: u.profilePublic,
-    createdAt: u.createdAt,
-    stickerCount: u.stickerCount,
-    packCount: u.packCount,
-  };
-}
-
 export function toMe(d: Deps, u: UserRecord): MeInfo {
-  return { ...toProfile(u), email: u.email, emailVerified: u.emailVerified, admin: isAdmin(d, u), plan: u.plan ?? "free" };
+  return { uid: u.uid, username: u.username, displayName: u.displayName, createdAt: u.createdAt, email: u.email, emailVerified: u.emailVerified, admin: isAdmin(d, u), plan: u.plan ?? "free" };
 }
 
 export async function getUser(d: Deps, uid: string): Promise<UserRecord | null> {
@@ -100,12 +80,7 @@ export async function registerUser(
     email,
     username,
     displayName: (input.displayName ?? "").trim().slice(0, 60) || username,
-    bio: "",
-    photoURL: "",
-    profilePublic: true,
     createdAt: Date.now(),
-    stickerCount: 0,
-    packCount: 0,
     passHash: await hashPassword(input.password),
     emailVerified: false,
   };
@@ -183,41 +158,13 @@ export async function resetPassword(d: Deps, token: string, password: string): P
   await revokeAllSessions(d, user.uid);
 }
 
-export async function saveProfile(
-  d: Deps,
-  uid: string,
-  patch: { displayName?: unknown; bio?: unknown; photoURL?: unknown; profilePublic?: unknown },
-): Promise<UserRecord> {
+export async function saveProfile(d: Deps, uid: string, patch: { displayName?: unknown }): Promise<UserRecord> {
   const user = await getUser(d, uid);
   if (!user) throw new AppError(404, "Cuenta no encontrada.");
   const next = { ...user };
   if (typeof patch.displayName === "string") next.displayName = patch.displayName.trim().slice(0, 60) || user.username;
-  if (typeof patch.bio === "string") next.bio = patch.bio.trim().slice(0, 280);
-  if (typeof patch.profilePublic === "boolean") next.profilePublic = patch.profilePublic;
-  if (typeof patch.photoURL === "string") {
-    if (patch.photoURL !== "" && !isOwnBlobUrl(patch.photoURL, uid, "avatar")) throw new AppError(400, "La foto no es válida.");
-    next.photoURL = patch.photoURL;
-  }
   await d.store.set(`user:${uid}`, next);
   return next;
-}
-
-export async function profileByUsername(d: Deps, username: string, viewerUid: string | null): Promise<UserProfile | null> {
-  const uid = await d.store.get<string>(`uname:${normalizeUsername(username)}`);
-  const user = uid ? await getUser(d, uid) : null;
-  if (!user) return null;
-  if (!user.profilePublic && user.uid !== viewerUid) return null;
-  return toProfile(user);
-}
-
-export async function adjustCounts(d: Deps, uid: string, packs: number, stickers: number): Promise<void> {
-  const user = await getUser(d, uid);
-  if (!user) return;
-  await d.store.set(`user:${uid}`, {
-    ...user,
-    packCount: Math.max(0, user.packCount + packs),
-    stickerCount: Math.max(0, user.stickerCount + stickers),
-  });
 }
 
 /** Registro completo de usuarios (para moderadores), del más reciente al más antiguo. */
@@ -234,8 +181,6 @@ export async function listUsers(d: Deps, offset: number, limit: number): Promise
       emailVerified: u.emailVerified,
       plan: u.plan ?? "free",
       createdAt: u.createdAt,
-      packCount: u.packCount,
-      stickerCount: u.stickerCount,
     }));
   return { total, users };
 }

@@ -4,7 +4,7 @@ import { AppError } from "./errors";
 export type Fetcher = typeof fetch;
 
 const MAX_BODY = 1_500_000;
-const UA = "AmilcarGitStickers/1.0 (+https://amilcargit-stickers-plus.vercel.app)";
+const UA = "YuiApi/1.0 (+https://yuiapi.vercel.app)";
 
 async function getJson(fetcher: Fetcher, url: string): Promise<unknown> {
   let res: Response;

@@ -4,29 +4,31 @@
 
 :root,
 :root[data-theme="dark"] {
-  --bg: 12 8 24;
-  --surface: 22 16 40;
-  --surface2: 34 26 58;
-  --ink: 244 240 255;
-  --muted: 163 154 196;
-  --line: 58 48 92;
-  --brand: 139 92 246;
-  --gold: 251 191 36;
-  --danger: 248 113 113;
-  --ok: 74 222 128;
+  --bg: 20 12 30;
+  --surface: 31 20 46;
+  --surface2: 45 30 66;
+  --ink: 252 242 250;
+  --muted: 190 165 195;
+  --line: 76 54 98;
+  --brand: 244 114 182;
+  --on-brand: 42 10 26;
+  --accent: 196 181 253;
+  --danger: 252 129 129;
+  --ok: 110 231 160;
   color-scheme: dark;
 }
 
 :root[data-theme="light"] {
-  --bg: 247 245 255;
+  --bg: 255 247 251;
   --surface: 255 255 255;
-  --surface2: 240 236 252;
-  --ink: 28 20 56;
-  --muted: 98 90 130;
-  --line: 218 211 240;
-  --brand: 109 40 217;
-  --gold: 161 98 7;
-  --danger: 220 38 38;
+  --surface2: 253 232 243;
+  --ink: 54 20 48;
+  --muted: 120 85 115;
+  --line: 245 208 230;
+  --brand: 190 24 93;
+  --on-brand: 255 255 255;
+  --accent: 109 40 217;
+  --danger: 185 28 28;
   --ok: 21 128 61;
   color-scheme: light;
 }
@@ -42,7 +44,7 @@ body {
   min-height: 100dvh;
   background-image:
     radial-gradient(60rem 30rem at 10% -10%, rgb(var(--brand) / 0.18), transparent 60%),
-    radial-gradient(50rem 28rem at 100% 0%, rgb(var(--gold) / 0.1), transparent 55%);
+    radial-gradient(50rem 28rem at 100% 0%, rgb(var(--accent) / 0.14), transparent 55%);
   background-attachment: fixed;
 }
 
@@ -53,7 +55,7 @@ body {
       disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primary {
-    @apply btn bg-brand text-white shadow-glow hover:brightness-110 active:scale-[0.98];
+    @apply btn bg-brand text-on-brand shadow-glow hover:brightness-110 active:scale-[0.98];
   }
   .btn-ghost {
     @apply btn border border-line bg-surface text-ink hover:bg-surface2 active:scale-[0.98];

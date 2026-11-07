@@ -1,179 +1,152 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { Img } from "@/components/Img";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { RequireAuth, VerifyBanner } from "@/components/Guards";
-import { useAuth, useToast } from "@/components/Providers";
-import { deletePack, deleteProject, listMyFavorites, listMyPacks, listMyProjects } from "@/lib/data";
-import { listDraft } from "@/lib/draft";
-import type { Pack, ProjectSummary } from "@/lib/types";
+import { useToast } from "@/components/Providers";
+import { createApiKey, listApiKeys, revokeApiKey, type ApiKeyInfo, type ApiQuota } from "@/lib/data";
 
 function DashboardInner() {
-  const { user, refresh } = useAuth();
-  const profile = user;
   const toast = useToast();
-  const [projects, setProjects] = useState<ProjectSummary[]>([]);
-  const [packs, setPacks] = useState<Pack[]>([]);
-  const [favorites, setFavorites] = useState(0);
-  const [draftCount, setDraftCount] = useState(0);
+  const [keys, setKeys] = useState<ApiKeyInfo[]>([]);
+  const [quota, setQuota] = useState<ApiQuota | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [fresh, setFresh] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!user) return;
     try {
-      const [p, k, f] = await Promise.all([listMyProjects(), listMyPacks(), listMyFavorites()]);
-      setProjects(p);
-      setPacks(k);
-      setFavorites(f.length);
-    } catch {
-      toast("No se pudieron cargar tus datos.", "error");
-    }
-    try {
-      setDraftCount((await listDraft()).length);
-    } catch {
-      setDraftCount(0);
+      const data = await listApiKeys();
+      setKeys(data.keys);
+      setQuota(data.quota);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudieron cargar tus claves.", "error");
     }
     setLoaded(true);
-  }, [user, toast]);
+  }, [toast]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  async function removeProject(id: string) {
-    if (!confirm("¿Eliminar este proyecto? No se puede deshacer.")) return;
+  async function create(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
     try {
-      await deleteProject(id);
-      setProjects((list) => list.filter((p) => p.id !== id));
-      toast("Proyecto eliminado.", "ok");
-    } catch {
-      toast("No se pudo eliminar el proyecto.", "error");
-    }
-  }
-
-  async function removePack(pack: Pack) {
-    if (!confirm(`¿Eliminar el paquete «${pack.title}»? Dejará de estar disponible.`)) return;
-    try {
-      await deletePack(pack.id);
-      setPacks((list) => list.filter((p) => p.id !== pack.id));
-      await refresh();
-      toast("Paquete eliminado.", "ok");
+      const { key } = await createApiKey(name.trim());
+      setFresh(key);
+      setName("");
+      await load();
     } catch (err) {
-      toast(err instanceof Error ? err.message : "No se pudo eliminar el paquete.", "error");
+      toast(err instanceof Error ? err.message : "No se pudo crear la clave.", "error");
+    } finally {
+      setBusy(false);
     }
   }
 
-  const stats = [
-    { label: "Proyectos", value: projects.length },
-    { label: "Paquetes publicados", value: profile?.packCount ?? 0 },
-    { label: "Stickers publicados", value: profile?.stickerCount ?? 0 },
-    { label: "Favoritos guardados", value: favorites },
-  ];
+  async function revoke(k: ApiKeyInfo) {
+    if (!confirm(`¿Revocar la clave «${k.name}»? Los bots que la usen dejarán de funcionar.`)) return;
+    try {
+      await revokeApiKey(k.id);
+      setKeys((list) => list.filter((x) => x.id !== k.id));
+      toast("Clave revocada.", "ok");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudo revocar la clave.", "error");
+    }
+  }
+
+  async function copy(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast("Copiado.", "ok");
+    } catch {
+      toast("No se pudo copiar; selecciónala y cópiala a mano.", "info");
+    }
+  }
 
   return (
-    <div className="space-y-10">
+    <div className="mx-auto max-w-3xl space-y-8">
       <VerifyBanner />
+      <header>
+        <h1 className="text-3xl font-bold">Mi panel</h1>
+        <p className="mt-1 text-muted">
+          Claves para usar la API desde tus bots y apps. Mira los endpoints en la{" "}
+          <Link href="/docs" className="text-brand underline">
+            documentación
+          </Link>
+          .
+        </p>
+      </header>
 
-      <section className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Hola, {profile?.displayName || "creador"} 👑</h1>
-          <p className="mt-1 text-muted">
-            {profile ? (
-              <>
-                Miembro desde {new Date(profile.createdAt).toLocaleDateString("es", { year: "numeric", month: "long" })} ·{" "}
-                <Link className="text-brand hover:underline" href={`/u/${profile.username}`}>
-                  Ver mi perfil público
-                </Link>
-              </>
-            ) : (
-              "Tu panel de creador"
-            )}
+      {quota && (
+        <section aria-label="Uso de hoy" className="card">
+          <p className="text-sm text-muted">Plan {quota.plan}</p>
+          <p className="text-3xl font-extrabold text-accent">
+            {quota.remaining} <span className="text-base font-normal text-muted">de {quota.limit} solicitudes restantes hoy</span>
           </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/editor" className="btn-primary">
-            Nuevo sticker
-          </Link>
-          <Link href="/developers" className="btn-ghost">
-            API y claves
-          </Link>
-          <Link href="/pack/new" className="btn-ghost">
-            Mi paquete en borrador{draftCount > 0 ? ` (${draftCount})` : ""}
-          </Link>
-        </div>
-      </section>
-
-      <section aria-label="Resumen" className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {stats.map((s) => (
-          <div key={s.label} className="card !p-4">
-            <p className="text-3xl font-extrabold text-gold">{s.value}</p>
-            <p className="text-sm text-muted">{s.label}</p>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface2" role="progressbar" aria-valuemin={0} aria-valuemax={quota.limit} aria-valuenow={quota.used} aria-label="Solicitudes usadas hoy">
+            <div className="h-full bg-brand" style={{ width: `${Math.min(100, (quota.used / quota.limit) * 100)}%` }} />
           </div>
-        ))}
+          <p className="hint mt-2">Se renuevan a las 12 a. m. (hora de Lima).</p>
+        </section>
+      )}
+
+      {fresh && (
+        <section className="card border-accent/60" role="alert">
+          <h2 className="text-lg font-bold">Copia tu clave ahora</h2>
+          <p className="mt-1 text-sm text-muted">Por seguridad solo se muestra una vez. Si la pierdes, revócala y crea otra.</p>
+          <code className="mt-3 block break-all rounded-xl bg-surface2 p-3 text-sm">{fresh}</code>
+          <div className="mt-3 flex gap-2">
+            <button type="button" className="btn-primary" onClick={() => copy(fresh)}>
+              Copiar
+            </button>
+            <button type="button" className="btn-ghost" onClick={() => setFresh(null)}>
+              Ya la guardé
+            </button>
+          </div>
+        </section>
+      )}
+
+      <section aria-labelledby="nueva" className="card">
+        <h2 id="nueva" className="text-lg font-bold">
+          Crear clave
+        </h2>
+        <form onSubmit={create} className="mt-3 flex flex-wrap items-end gap-3">
+          <div className="min-w-[12rem] flex-1">
+            <label htmlFor="keyname" className="label">
+              Nombre
+            </label>
+            <input id="keyname" className="input" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} placeholder="Mi bot de WhatsApp" required />
+          </div>
+          <button type="submit" className="btn-primary" disabled={busy || !name.trim()}>
+            {busy ? "Creando…" : "Crear"}
+          </button>
+        </form>
+        <p className="hint mt-2">Máximo 5 claves. Necesitas el correo verificado.</p>
       </section>
 
-      <section aria-labelledby="proyectos">
-        <h2 id="proyectos" className="mb-4 text-xl font-bold">
-          Mis proyectos
+      <section aria-labelledby="claves">
+        <h2 id="claves" className="mb-3 text-xl font-bold">
+          Mis claves
         </h2>
         {!loaded ? (
           <p className="text-muted">Cargando…</p>
-        ) : projects.length === 0 ? (
-          <div className="card text-muted">
-            Aún no guardaste proyectos.{" "}
-            <Link href="/editor" className="text-brand underline">
-              Abre el editor
-            </Link>{" "}
-            y crea el primero.
-          </div>
+        ) : keys.length === 0 ? (
+          <div className="card text-muted">Aún no tienes claves.</div>
         ) : (
-          <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-            {projects.map((p) => (
-              <li key={p.id} className="card !p-3">
-                <Link href={`/editor?project=${p.id}`} className="block">
-                  <div className="checker aspect-square overflow-hidden rounded-xl">
-                    {p.thumb ? <Img src={p.thumb} alt={`Vista previa de ${p.name}`} className="h-full w-full object-contain" /> : null}
-                  </div>
-                  <p className="mt-2 truncate text-sm font-semibold">{p.name}</p>
-                </Link>
-                <button type="button" onClick={() => removeProject(p.id)} className="mt-2 text-xs text-danger hover:underline">
-                  Eliminar
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section aria-labelledby="paquetes">
-        <h2 id="paquetes" className="mb-4 text-xl font-bold">
-          Mis paquetes
-        </h2>
-        {!loaded ? null : packs.length === 0 ? (
-          <div className="card text-muted">
-            Todavía no publicaste paquetes. Crea stickers, agrégalos al borrador y publícalo en{" "}
-            <Link href="/pack/new" className="text-brand underline">
-              Mi paquete
-            </Link>
-            .
-          </div>
-        ) : (
-          <ul className="grid gap-4 sm:grid-cols-2">
-            {packs.map((p) => (
-              <li key={p.id} className="card flex items-center gap-4 !p-4">
-                <Img src={p.trayUrl} alt="" className="h-16 w-16 shrink-0 rounded-xl border border-line object-contain" />
-                <div className="min-w-0 flex-1">
-                  <Link href={`/p/${p.id}`} className="block truncate font-semibold hover:underline">
-                    {p.title}
-                  </Link>
+          <ul className="space-y-3">
+            {keys.map((k) => (
+              <li key={k.id} className="card flex flex-wrap items-center justify-between gap-3 !p-4">
+                <div className="min-w-0">
+                  <p className="font-semibold">{k.name}</p>
                   <p className="text-xs text-muted">
-                    {p.stickers.length} stickers · {p.animated ? "animado" : "estático"} · {p.visibility === "public" ? "público" : "privado"} · ♥ {p.favCount} · ↓ {p.downloadCount}
+                    <code>{k.prefix}…</code> · creada {new Date(k.createdAt).toLocaleDateString("es")} ·{" "}
+                    {k.lastUsedAt ? `último uso ${new Date(k.lastUsedAt).toLocaleString("es")}` : "sin usar"}
                   </p>
-                  {p.status === "removed" && <p className="mt-1 text-xs font-semibold text-danger">Retirado por moderación</p>}
                 </div>
-                <button type="button" onClick={() => removePack(p)} className="text-xs text-danger hover:underline">
-                  Eliminar
+                <button type="button" className="btn-danger" onClick={() => revoke(k)}>
+                  Revocar
                 </button>
               </li>
             ))}

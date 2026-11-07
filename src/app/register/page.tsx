@@ -67,7 +67,7 @@ export default function RegisterPage() {
   return (
     <div className="mx-auto max-w-md">
       <h1 className="text-3xl font-bold">Crear cuenta</h1>
-      <p className="mt-2 text-muted">Gratis. Verificarás tu correo para poder publicar.</p>
+      <p className="mt-2 text-muted">Gratis. Verificarás tu correo para poder crear claves de API.</p>
       <form onSubmit={submit} className="card mt-6 space-y-4" noValidate>
         <div>
           <label htmlFor="displayName" className="label">
@@ -100,7 +100,7 @@ export default function RegisterPage() {
                 ? "Ese usuario ya existe."
                 : usernameState === "invalid"
                   ? "De 3 a 20 caracteres: minúsculas, números o _."
-                  : "Tu enlace público será /u/tu-usuario"}
+                  : "Será tu nombre de usuario en YuiApi."}
           </p>
         </div>
         <div>

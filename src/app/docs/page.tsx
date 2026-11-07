@@ -1,48 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ENDPOINTS, GROUPS, buildUrl } from "@/lib/endpoints";
 
 export const metadata: Metadata = {
-  title: "Documentación de la API",
-  description: "API para crear stickers de WhatsApp, buscar y descargar paquetes, y consultar música, anime, Wikipedia, libros e imágenes libres.",
+  title: "Documentación",
+  description: "Cómo usar YuiApi: autenticación, límites y todos los endpoints de búsqueda, stickers y herramientas.",
 };
 
 const BASE = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/+$/, "");
-
-type Endpoint = { method: "GET" | "POST"; path: string; what: string; params: string };
-
-const ENDPOINTS: { group: string; items: Endpoint[] }[] = [
-  {
-    group: "Stickers",
-    items: [
-      { method: "POST", path: "/api/v1/sticker", what: "Convierte una imagen o GIF en un sticker de WhatsApp (WebP 512×512, transparente, dentro del peso permitido).", params: "Cuerpo: la imagen (o multipart «file»). ?fit=contain|cover  ?quality=10-100  ?format=json" },
-      { method: "GET", path: "/api/v1/sticker/search", what: "Busca stickers en Giphy.", params: "?q=  ?limit=" },
-      { method: "GET", path: "/api/v1/packs", what: "Paquetes públicos de la comunidad.", params: "?q=  ?category=  ?limit=  ?offset=" },
-      { method: "GET", path: "/api/v1/packs/{id}", what: "Un paquete con las direcciones de sus stickers.", params: "—" },
-      { method: "GET", path: "/api/v1/download/pack/{id}", what: "Descarga el paquete como ZIP o archivo .wastickers.", params: "?format=zip|wastickers" },
-    ],
-  },
-  {
-    group: "Búsqueda",
-    items: [
-      { method: "GET", path: "/api/v1/search/music", what: "Canciones (Apple iTunes Search). Incluye un fragmento oficial de 30 s, no la canción completa.", params: "?q=  ?limit=" },
-      { method: "GET", path: "/api/v1/search/anime", what: "Anime (Jikan / MyAnimeList).", params: "?q=  ?limit=" },
-      { method: "GET", path: "/api/v1/search/wiki", what: "Artículos de Wikipedia.", params: "?q=  ?lang=es  ?limit=" },
-      { method: "GET", path: "/api/v1/search/books", what: "Libros (Open Library).", params: "?q=  ?limit=" },
-      { method: "GET", path: "/api/v1/search/images", what: "Imágenes con licencia abierta (Openverse), con autor y licencia.", params: "?q=  ?limit=" },
-    ],
-  },
-  {
-    group: "Herramientas",
-    items: [
-      { method: "GET", path: "/api/v1/tools/qr", what: "Código QR en PNG.", params: "?text=  ?size=128-1024" },
-      { method: "GET", path: "/api/v1/tools/hash", what: "Hash de un texto.", params: "?text=  ?algo=md5|sha1|sha256|sha512" },
-      { method: "GET", path: "/api/v1/tools/uuid", what: "UUID v4.", params: "?count=1-50" },
-      { method: "GET", path: "/api/v1/tools/base64", what: "Codifica o decodifica Base64.", params: "?text=  ?mode=encode|decode" },
-      { method: "GET", path: "/api/v1/tools/password", what: "Contraseña aleatoria segura.", params: "?length=8-64  ?symbols=true|false" },
-      { method: "GET", path: "/api/v1/me", what: "Tu plan y las solicitudes que te quedan hoy.", params: "—" },
-    ],
-  },
-];
 
 const code = "overflow-x-auto rounded-xl bg-surface2 p-4 text-sm";
 
@@ -50,14 +15,15 @@ export default function DocsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-10">
       <header>
-        <h1 className="text-3xl font-bold">API de AmilcarGit Stickers</h1>
+        <h1 className="text-3xl font-bold">Documentación de YuiApi</h1>
         <p className="mt-2 text-muted">
-          Crea stickers de WhatsApp desde tu bot, busca y descarga paquetes y consulta música, anime, Wikipedia, libros e imágenes libres. Todas las respuestas son JSON con la forma{" "}
+          Convierte imágenes en stickers de WhatsApp, busca música, anime, Wikipedia, libros e imágenes libres y usa herramientas como QR y hashes. Todas las respuestas son JSON con la forma{" "}
           <code>{"{ ok: true, ... }"}</code> o <code>{"{ ok: false, error }"}</code>.
         </p>
         <p className="mt-3">
-          <Link href="/developers" className="btn-primary inline-flex">
-            Obtener mi clave
+          <Link href="/dashboard" className="btn-primary inline-flex">
+            Obtener mi clave</Link>
+          <Link href="/endpoints" className="btn-ghost ml-2 inline-flex">Probar endpoints
           </Link>
         </p>
       </header>
@@ -67,7 +33,7 @@ export default function DocsPage() {
           Autenticación
         </h2>
         <p>
-          Crea una clave en el <Link href="/developers" className="text-brand underline">panel de desarrollador</Link> y envíala en el encabezado <code>x-api-key</code> (también sirve{" "}
+          Crea una clave en el <Link href="/dashboard" className="text-brand underline">panel</Link> y envíala en el encabezado <code>x-api-key</code> (también sirve{" "}
           <code>Authorization: Bearer …</code>). Evita ponerla en la URL: las direcciones quedan en registros.
         </p>
         <pre className={code}>{`curl -H "x-api-key: TU_CLAVE" "${BASE}/api/v1/me"`}</pre>
@@ -120,18 +86,24 @@ curl -X POST -H "x-api-key: TU_CLAVE" --data-binary @foto.jpg \\
   "${BASE}/api/v1/sticker" -o sticker.webp`}</pre>
       </section>
 
-      {ENDPOINTS.map((g) => (
-        <section key={g.group} aria-label={g.group} className="space-y-3">
-          <h2 className="text-2xl font-bold">{g.group}</h2>
+      {GROUPS.map((g) => (
+        <section key={g} aria-label={g} className="space-y-3">
+          <h2 className="text-2xl font-bold">{g}</h2>
           <ul className="space-y-3">
-            {g.items.map((e) => (
-              <li key={e.path} className="card !p-4">
+            {ENDPOINTS.filter((e) => e.group === g).map((e) => (
+              <li key={e.id} className="card !p-4">
                 <p className="break-all">
                   <span className="chip !min-h-[28px] mr-2 text-xs font-bold">{e.method}</span>
                   <code>{e.path}</code>
                 </p>
                 <p className="mt-2 text-sm">{e.what}</p>
-                {e.params !== "—" && <p className="mt-1 break-words text-xs text-muted">{e.params}</p>}
+                {(e.params.length > 0 || e.body) && (
+                  <p className="mt-1 break-words text-xs text-muted">
+                    {e.body && "Cuerpo: la imagen (o multipart «file»). "}
+                    {e.params.map((p) => `?${p.name}= (${p.label})`).join("  ")}
+                  </p>
+                )}
+                <pre className="mt-2 overflow-x-auto rounded-lg bg-surface2 p-2 text-xs">{`${e.method === "POST" ? "POST " : ""}${buildUrl(e, Object.fromEntries(e.params.map((p) => [p.name, p.example])))}`}</pre>
               </li>
             ))}
           </ul>
@@ -145,7 +117,6 @@ curl -X POST -H "x-api-key: TU_CLAVE" --data-binary @foto.jpg \\
         <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
           <li>Esta API no descarga contenido de YouTube, Spotify, Apple Music, TikTok ni similares: sus términos y los derechos de autor lo impiden.</li>
           <li>Los stickers de Giphy requieren mostrar «Powered by GIPHY». Las imágenes de Openverse traen autor y licencia: respétalos.</li>
-          <li>Los paquetes de la comunidad pertenecen a sus autores; cada uno trae su licencia y ficha de autoría.</li>
           <li>Los datos de búsqueda vienen de servicios de terceros y pueden fallar o cambiar sin aviso.</li>
         </ul>
       </section>

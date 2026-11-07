@@ -3,21 +3,19 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Img } from "./Img";
 import { InstallButton } from "./InstallButton";
+import { Mascot, Wordmark } from "./Mascot";
 import { useAuth, useToast } from "./Providers";
 import { ThemeToggle } from "./ThemeToggle";
 
 const links = [
-  { href: "/explore", label: "Explorar" },
-  { href: "/editor", label: "Crear" },
+  { href: "/endpoints", label: "Endpoints" },
+  { href: "/docs", label: "Docs" },
   { href: "/dashboard", label: "Mi panel" },
-  { href: "/docs", label: "API" },
 ];
 
 export function Header() {
   const { user, admin, loading, logout: doLogout } = useAuth();
-  const profile = user;
   const toast = useToast();
   const router = useRouter();
   const pathname = usePathname();
@@ -37,11 +35,9 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bg/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
-        <Link href="/" className="flex items-center gap-2 font-bold tracking-tight" aria-label="AmilcarGit Stickers, inicio">
-          <span aria-hidden="true" className="text-2xl">👑</span>
-          <span className="hidden sm:inline">
-            Amilcar<span className="text-gold">Git</span> Stickers
-          </span>
+        <Link href="/" className="flex items-center gap-2 text-xl" aria-label="YuiApi, inicio">
+          <Mascot size={36} />
+          <Wordmark />
         </Link>
 
         <nav className="ml-4 hidden items-center gap-1 md:flex" aria-label="Principal">
@@ -49,14 +45,14 @@ export function Header() {
             <Link
               key={l.href}
               href={l.href}
-              className={`rounded-lg px-3 py-2 text-sm font-medium hover:bg-surface2 ${pathname.startsWith(l.href) ? "text-gold" : "text-ink"}`}
+              className={`rounded-lg px-3 py-2 text-sm font-medium hover:bg-surface2 ${pathname.startsWith(l.href) ? "text-accent" : "text-ink"}`}
             >
               {l.label}
             </Link>
           ))}
           {admin && (
             <Link href="/admin" className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-surface2">
-              Moderación
+              Admin
             </Link>
           )}
         </nav>
@@ -76,14 +72,10 @@ export function Header() {
           )}
           {user && (
             <>
-              <Link href="/settings" className="hidden items-center gap-2 sm:flex" aria-label="Mi perfil y ajustes">
-                {profile?.photoURL ? (
-                  <Img src={profile.photoURL} alt="" className="h-9 w-9 rounded-full border border-line object-cover" />
-                ) : (
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand/30 text-sm font-bold">
-                    {(profile?.displayName || user.email || "?").slice(0, 1).toUpperCase()}
-                  </span>
-                )}
+              <Link href="/settings" className="hidden items-center gap-2 sm:flex" aria-label="Mi cuenta">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand/30 text-sm font-bold">
+                  {(user.displayName || user.email || "?").slice(0, 1).toUpperCase()}
+                </span>
               </Link>
               <button type="button" onClick={logout} className="btn-ghost !min-h-[40px] hidden sm:inline-flex">
                 Salir
@@ -116,14 +108,14 @@ export function Header() {
             {user && (
               <li>
                 <Link href="/settings" className="block rounded-lg px-3 py-3 font-medium hover:bg-surface2">
-                  Perfil y ajustes
+                  Mi cuenta
                 </Link>
               </li>
             )}
             {admin && (
               <li>
                 <Link href="/admin" className="block rounded-lg px-3 py-3 font-medium hover:bg-surface2">
-                  Moderación
+                  Admin
                 </Link>
               </li>
             )}

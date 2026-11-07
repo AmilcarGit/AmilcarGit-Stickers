@@ -41,7 +41,7 @@ function LoginForm() {
   return (
     <div className="mx-auto max-w-md">
       <h1 className="text-3xl font-bold">Iniciar sesión</h1>
-      <p className="mt-2 text-muted">Entra para guardar proyectos y publicar tus paquetes.</p>
+      <p className="mt-2 text-muted">Entra para gestionar tus claves de API.</p>
       <form onSubmit={submit} className="card mt-6 space-y-4" noValidate>
         <div>
           <label htmlFor="email" className="label">

@@ -10,27 +10,27 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "AmilcarGit Stickers — crea stickers 3D y animados para WhatsApp",
-    template: "%s · AmilcarGit Stickers",
+    default: "YuiApi — API de búsqueda, stickers y herramientas",
+    template: "%s · YuiApi",
   },
   description:
-    "Crea, exporta y comparte stickers 3D y animados para WhatsApp. Editor táctil, exportación WebP lista para usar y créditos de autoría.",
-  applicationName: "AmilcarGit Stickers",
+    "API pública con clave gratuita: busca stickers, música, anime, Wikipedia, libros e imágenes libres, y usa herramientas como QR, hashes y convertidor de stickers para WhatsApp.",
+  applicationName: "YuiApi",
   icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
-  appleWebApp: { capable: true, title: "Stickers", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "YuiApi", statusBarStyle: "black-translucent" },
   openGraph: {
     type: "website",
-    siteName: "AmilcarGit Stickers",
-    title: "AmilcarGit Stickers 👑",
-    description: "Editor de stickers 3D y animados para WhatsApp.",
+    siteName: "YuiApi",
+    title: "YuiApi 🌸",
+    description: "API pública de búsqueda, stickers y herramientas.",
     locale: "es_ES",
   },
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0c0818" },
-    { media: "(prefers-color-scheme: light)", color: "#f7f5ff" },
+    { media: "(prefers-color-scheme: dark)", color: "#140c1e" },
+    { media: "(prefers-color-scheme: light)", color: "#fff7fb" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -49,7 +49,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Providers>
           <a
             href="#contenido"
-            className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-brand focus:px-4 focus:py-2 focus:text-white"
+            className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-brand focus:px-4 focus:py-2 focus:text-on-brand"
           >
             Saltar al contenido
           </a>

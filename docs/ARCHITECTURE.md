@@ -3,65 +3,56 @@
 ## Visión general
 
 ```
-Navegador (Next.js, cliente)            Vercel (serverless, /api/*)              Servicios
-┌─────────────────────────────┐ cookie ┌──────────────────────────────┐
-│ Editor (canvas 512×512)     │ HttpOnly│ auth: registro, login, sesión│──► Upstash Redis
-│ Exportación WebP + mux      │───────►│ proyectos, paquetes, admin   │    (usuarios, sesiones,
-│ Páginas y formularios       │        │ /api/upload (sharp)          │     proyectos, paquetes)
-└─────────────────────────────┘        │ /api/webp  /api/zip          │──► Vercel Blob (archivos)
-                                       │ correo (nodemailer, SMTP)    │──► tu proveedor SMTP
-                                       └──────────────────────────────┘
+Navegador (Next.js)                  Vercel (serverless, /api/*)                 Servicios
+┌──────────────────────┐  cookie    ┌────────────────────────────────┐
+│ Landing, /endpoints, │  HttpOnly  │ /api/auth, keys, me, admin     │──► Upstash Redis
+│ /docs, /dashboard,   │──────────► │ (sesión por cookie)            │    (usuarios, sesiones,
+│ /admin, /settings    │            │                                │     claves, cuotas)
+└──────────────────────┘            │ /api/v1/*  (clave de API)      │──► iTunes, Jikan, Wikipedia,
+Bots y apps ── x-api-key ─────────► │ sticker, search, tools, me     │    Open Library, Openverse, Giphy
+                                    │ correo (nodemailer, SMTP)      │──► tu proveedor SMTP
+                                    └────────────────────────────────┘
 ```
-
-La mayor parte del trabajo (editar, renderizar, codificar WebP) ocurre **en el navegador**; el servidor valida, guarda y entrega.
 
 ## Decisiones
 
-**Cuentas propias sobre Upstash Redis.** El registro de usuarios vive en una base Redis (Upstash, REST, apta para serverless). Toda la lógica está en `src/server/*` detrás de una interfaz `Store` (`UpstashStore` en producción, `MemoryStore` en pruebas), así se prueba sin red.
+**Cuentas propias sobre Upstash Redis.** Toda la lógica vive en `src/server` y depende de la interfaz `Store` (`UpstashStore` en producción, `MemoryStore` en pruebas), así se prueba sin red.
 
-**Contraseñas.** `scrypt` (N=16384, r=8, p=1) con sal aleatoria por usuario, comparación en tiempo constante. Nunca se guardan ni se registran en claro; no hay contraseñas en `localStorage`.
+**Contraseñas.** `scrypt` con sal aleatoria por usuario y comparación en tiempo constante. Nunca se guardan ni se registran en claro.
 
-**Sesiones.** Token firmado (HMAC-SHA256 con `AUTH_SECRET`) en una cookie `HttpOnly`, `SameSite=Lax` y `Secure` en producción, **más** un registro de sesión en Redis (`sess:{id}`): cerrar sesión o cambiar la contraseña lo borra y el token robado deja de servir. Las peticiones que cambian datos comprueban `Origin` (anti-CSRF).
+**Sesiones.** Token firmado (HMAC-SHA256 con `AUTH_SECRET`) en cookie `HttpOnly`, `SameSite=Lax`, `Secure` en producción, más un registro de sesión en Redis para poder revocarlas (cerrar sesión o cambiar la contraseña las invalida).
 
-**Unicidad atómica.** Usuario y correo se reservan con `SET NX` (`uname:*`, `uemail:*`), así dos registros simultáneos no pueden tomar el mismo.
+**Unicidad atómica.** Usuario y correo se reservan con `SET NX` (`uname:*`, `uemail:*`).
 
-**Correo.** Verificación (24 h) y recuperación de contraseña (1 h) usan tokens aleatorios guardados como hash SHA-256 y de un solo uso. Requieren un SMTP (`SMTP_URL`); sin él el registro y el inicio de sesión funcionan, pero no se puede verificar la cuenta (y por tanto no se puede publicar) ni recuperar la contraseña.
+**Correo.** Verificación (24 h) y recuperación (1 h) con tokens aleatorios guardados como hash SHA-256 y de un solo uso.
 
-**Moderación.** Es moderador quien tenga correo **verificado** incluido en `ADMIN_EMAILS`. Ve los reportes y el registro completo de usuarios (`/admin`).
+**Claves de API.** `amk_` + 24 bytes aleatorios en base64url. Solo se guarda el SHA-256 (`apikey:{hash}`); la clave se muestra una vez. Máximo 5 por cuenta y se exige correo verificado. Se aceptan por `x-api-key`, `Authorization: Bearer` o `?apikey=`.
 
-**Límites de uso** en Redis (`INCR` + `EXPIRE`), por IP, correo o usuario, válidos entre instancias serverless.
+**Planes y cuotas.** Free/Pro/Ultra con cupo diario (`quota:{uid}:{YYYYMMDD}`, reinicio a medianoche de Lima, UTC-5) y límite por minuto (ventana fija en Redis). Las cabeceras `x-ratelimit-*` informan el estado. El plan lo cambia un administrador.
 
-**Vercel Blob, no Firebase Storage.** Los archivos publicados van a Blob; el servidor solo acepta URLs de archivos propios del usuario (`/{tipo}s/{uid}/…`) y los borra cuando se elimina el paquete.
+**Administración.** Es administrador quien tenga correo **verificado** incluido en `ADMIN_EMAILS`.
 
-**Render del sticker por capas (`SceneRenderer`).** Elementos → silueta oscura desplazada N veces (extrusión 3D) → degradado de luz recortado al sticker → silueta blanca dilatada (borde) → sombra. Todo con canvas 2D, sin WebGL, así funciona igual en Android, iPhone y escritorio.
+**Proveedores externos.** `src/server/external.ts` recibe `fetch` inyectado, lo que permite probarlos con respuestas simuladas. Todos usan un `User-Agent` identificable y tiempo de espera.
 
-**Filtros y quitar fondo a mano.** Safari no soporta `ctx.filter`; operar sobre los píxeles es portable. El fondo se borra con relleno por inundación desde los bordes, de modo que los detalles interiores del mismo color se conservan.
+**Convertidor de stickers.** `sticker-convert.ts` usa sharp: WebP 512×512 transparente, ≤100 KB estático / ≤500 KB animado (ajusta la calidad), entrada máx. 5 MB y ≤60 cuadros. Las constantes salen de `src/lib/whatsapp.ts`.
 
-**WebP animado ensamblado a mano (`webp-mux.ts`).** Los navegadores solo codifican WebP estático. Cada cuadro se codifica por separado y se unen en un contenedor RIFF con `VP8X` (animación + alfa), `ANIM` (bucle infinito) y un `ANMF` por cuadro. Verificado con el decodificador real de Chromium (`ImageDecoder`).
+**Catálogo único de endpoints.** `src/lib/endpoints.ts` alimenta la documentación y el explorador; añadir un endpoint nuevo ahí lo muestra en ambos.
 
-**Ajuste de peso automático.** Estático: baja la calidad hasta ≤100 KB. Animado: baja la calidad y luego los cuadros por segundo (12→10→8) hasta ≤500 KB.
-
-**Safari.** `canvas.toBlob("image/webp")` devuelve PNG en Safari. `encodeWebp` lo detecta por el tipo del blob y envía el PNG a `/api/webp`, que lo convierte con sharp.
-
-**Un único archivo de reglas de WhatsApp** (`src/lib/whatsapp.ts`). Si WhatsApp cambia sus límites, solo se edita ahí.
+**Handlers.** `route()`/`routeWith()` (`server/http.ts`) para rutas de la web con cookie (comprobación de `Origin`); `v1()`/`v1With()` (`server/v1.ts`) para la API con clave. Los archivos de ruta solo exportan nombres permitidos por Next.
 
 ## Modelo de datos (Redis)
 
 | Clave | Contenido |
 | --- | --- |
-| `user:{uid}` | cuenta: perfil, correo, hash de contraseña, verificado, contadores |
+| `user:{uid}` | cuenta: correo, hash de contraseña, verificado, plan |
 | `uname:{usuario}`, `uemail:{correo}` | reservas únicas → `uid` |
 | `users` (zset) | registro de usuarios por fecha de alta |
 | `sess:{id}`, `usess:{uid}` | sesiones activas y su índice por usuario |
 | `verify:{sha256}`, `reset:{sha256}` | tokens de un solo uso con caducidad |
-| `project:{id}`, `projects:{uid}` | proyectos del editor (máx. 700 KB cada uno, 30 por usuario) |
-| `pack:{id}`, `packs:public`, `packs:owner:{uid}` | paquetes y sus índices |
-| `packs:fav`, `packs:dl`, `fav:{uid}` | contadores y favoritos |
-| `report:{id}`, `reports:open` | reportes |
+| `apikey:{hash}`, `apikeys:{uid}` | claves (solo hash) y su índice por usuario |
+| `quota:{uid}:{día}` | contador diario de solicitudes |
 | `rl:*` | contadores de límite de uso |
-
-**Límite conocido:** Upstash REST admite cuerpos de ~1 MB; por eso los proyectos tienen tope y las imágenes grandes deben reducirse antes de guardarse. Redis no es una base relacional: las búsquedas se hacen sobre índices propios (zsets) y el filtrado de Explorar ocurre en el navegador.
 
 ## Pruebas
 
-Las funciones puras (`src/lib`) y toda la lógica de servidor (`src/server/server.test.ts`, sobre `MemoryStore`) tienen pruebas. El workflow `.github/workflows/ci.yml` ejecuta lint, tipos, pruebas y build en cada push y pull request. Lo que **no** cubre: la conexión real a Upstash, el envío real de correo y Vercel Blob (requieren credenciales).
+Funciones puras (`src/lib`) y lógica de servidor (`src/server/*.test.ts`, sobre `MemoryStore` y `fetch` simulado). El workflow `.github/workflows/ci.yml` ejecuta lint, tipos, pruebas y build.

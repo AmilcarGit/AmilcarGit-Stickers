@@ -11,7 +11,7 @@ type AuthState = {
   user: MeInfo | null;
   admin: boolean;
   loading: boolean;
-  /** Vuelve a pedir la cuenta al servidor (tras verificar el correo, editar el perfil, publicar…). */
+  /** Vuelve a pedir la cuenta al servidor (tras verificar el correo, editar el perfil…). */
   refresh: () => Promise<void>;
   /** Usa directamente una cuenta ya recibida (tras iniciar sesión o registrarse). */
   setUser: (me: MeInfo | null) => void;

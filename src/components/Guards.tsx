@@ -71,9 +71,9 @@ export function VerifyBanner() {
   }
 
   return (
-    <div className="mb-6 rounded-2xl border border-gold/50 bg-gold/10 p-4 text-sm" role="alert">
+    <div className="mb-6 rounded-2xl border border-accent/50 bg-accent/10 p-4 text-sm" role="alert">
       <p className="font-semibold">Verifica tu correo ({user.email})</p>
-      <p className="mt-1 text-muted">Necesitas verificarlo para publicar paquetes. Revisa también la carpeta de spam.</p>
+      <p className="mt-1 text-muted">Necesitas verificarlo para crear claves de API. Revisa también la carpeta de spam.</p>
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" className="btn-ghost" onClick={resend} disabled={busy}>
           Reenviar correo

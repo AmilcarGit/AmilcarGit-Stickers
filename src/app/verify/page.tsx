@@ -36,7 +36,7 @@ function VerifyView() {
       {state === "ok" && (
         <>
           <h1 className="text-2xl font-bold">¡Correo verificado!</h1>
-          <p className="mt-2 text-muted">Ya puedes publicar tus paquetes.</p>
+          <p className="mt-2 text-muted">Ya puedes crear tus claves de API.</p>
           <Link href="/dashboard" className="btn-primary mt-4 inline-flex">
             Ir a mi panel
           </Link>

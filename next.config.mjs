@@ -10,11 +10,6 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   serverExternalPackages: ["sharp"],
-  images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
-    ],
-  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

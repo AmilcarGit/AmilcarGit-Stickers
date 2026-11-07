@@ -17,7 +17,7 @@ export default function DocsPage() {
       <header>
         <h1 className="text-3xl font-bold">Documentación de YuiApi</h1>
         <p className="mt-2 text-muted">
-          Convierte imágenes en stickers de WhatsApp, busca música, anime, Wikipedia, libros e imágenes libres y usa herramientas como QR y hashes. Todas las respuestas son JSON con la forma{" "}
+          Convierte imágenes en stickers de WhatsApp, busca música, anime, Wikipedia, libros e imágenes libres y usa herramientas como QR y hashes. Las respuestas JSON usan la forma{" "}
           <code>{"{ ok: true, ... }"}</code> o <code>{"{ ok: false, error }"}</code>.
         </p>
         <p className="mt-3">
@@ -37,6 +37,7 @@ export default function DocsPage() {
           <code>Authorization: Bearer …</code>). Evita ponerla en la URL: las direcciones quedan en registros.
         </p>
         <pre className={code}>{`curl -H "x-api-key: TU_CLAVE" "${BASE}/api/v1/me"`}</pre>
+        <p className="text-sm text-muted">La clave se puede enviar también como Bearer token. Nunca incluyas claves reales en ejemplos públicos.</p>
       </section>
 
       <section aria-labelledby="limites" className="space-y-3">
@@ -63,6 +64,13 @@ export default function DocsPage() {
           El día se reinicia a las 12 a. m. (hora de Lima). Cada respuesta trae <code>x-ratelimit-limit</code>, <code>x-ratelimit-remaining</code> y <code>x-ratelimit-reset</code>. Al excederlos recibes{" "}
           <code>429</code>. Errores comunes: <code>401</code> clave inválida, <code>400</code> parámetro faltante, <code>413</code> archivo muy grande, <code>503</code> servicio externo no disponible.
         </p>
+      </section>
+
+      <section aria-labelledby="files" className="space-y-3">
+        <h2 id="files" className="text-2xl font-bold">Archivos, imágenes y descargas</h2>
+        <p className="text-sm text-muted">Los endpoints de archivo reciben el contenido binario en el cuerpo de una solicitud POST. El tamaño máximo general es 8 MB (2 MB para la conversión Base64). Las operaciones de imagen admiten PNG, JPG y WebP estáticos; los GIF animados se procesan con el endpoint de stickers.</p>
+        <pre className={code}>{`curl -X POST -H "x-api-key: TU_CLAVE" -H "content-type: image/png" --data-binary @foto.png "${BASE}/api/v1/tools/image-compress?quality=75" -o foto-yuiapi.webp`}</pre>
+        <p className="text-sm text-muted">El explorador muestra una vista previa para imágenes y un botón para descargar los archivos resultantes. También genera ejemplos para JavaScript, Python y cURL.</p>
       </section>
 
       <section aria-labelledby="bot" className="space-y-3">

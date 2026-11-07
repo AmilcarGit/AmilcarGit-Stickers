@@ -3,6 +3,8 @@ import type { Deps } from "./deps";
 import { getDeps } from "./deps";
 import { AppError } from "./errors";
 import { clientIp } from "./http";
+import { hit } from "./store";
+import { isIpBlocked, recordSecurityEvent } from "./security";
 import type { UserRecord } from "./users";
 
 const CORS: Record<string, string> = {
@@ -48,11 +50,27 @@ async function run<P>(req: Request, params: P, fn: Handler<P>): Promise<Response
   try {
     const d = getDeps();
     const url = new URL(req.url);
+    const ip = clientIp(req);
+    const blocked = await isIpBlocked(d, ip);
+    if (blocked) {
+      if (await hit(d.store, `security:block-hit:${ip}`, 1, 60)) {
+        await recordSecurityEvent(d, { type: "rate_limited", severity: "warning", ip, path: url.pathname, detail: "Solicitud rechazada desde una IP bloqueada" }).catch(() => undefined);
+      }
+      return fail(403, "Esta dirección IP está bloqueada temporalmente.");
+    }
     const auth = await authenticateApiKey(d, apiKeyFrom(req, url));
     quota = auth.quota;
-    return reply(await fn({ d, req, url, ip: clientIp(req), user: auth.user, quota }, params), quota);
+    return reply(await fn({ d, req, url, ip, user: auth.user, quota }, params), quota);
   } catch (err) {
     if (err instanceof AppError) {
+      const d = getDeps();
+      const url = new URL(req.url);
+      const ip = clientIp(req);
+      if (err.status === 401) {
+        await recordSecurityEvent(d, { type: "api_key_rejected", severity: "warning", ip, path: url.pathname, detail: "Clave de API ausente, inválida o revocada" }).catch(() => undefined);
+      } else if (err.status === 429) {
+        await recordSecurityEvent(d, { type: "rate_limited", severity: "warning", ip, path: url.pathname, detail: "Se alcanzó un límite de solicitudes" }).catch(() => undefined);
+      }
       const res = fail(err.status, err.message);
       if (quota) res.headers.set("x-ratelimit-remaining", String(quota.remaining));
       return res;

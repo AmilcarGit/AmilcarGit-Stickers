@@ -190,7 +190,7 @@ export async function listUsers(d: Deps, offset: number, limit: number): Promise
       status: u.status ?? "active",
       dailyLimit: u.dailyLimit ?? null,
       minuteLimit: u.minuteLimit ?? null,
-      role: u.role ?? (d.adminEmails.includes(u.email) ? "admin" : "user"),
+      role: (u.role ?? (d.adminEmails.includes(u.email) ? "admin" : "user")) as UserRow["role"],
     }));
   return { total, users };
 }

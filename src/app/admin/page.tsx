@@ -86,6 +86,7 @@ function AdminInner() {
       const detail = await getAdminUser(u.uid);
       setSelectedUser(detail.user);
       setActivity(detail.activity);
+      setCanManageRoles(detail.canManageRoles);
       setDailyLimit(detail.user.dailyLimit == null ? "" : String(detail.user.dailyLimit));
       setMinuteLimit(detail.user.minuteLimit == null ? "" : String(detail.user.minuteLimit));
       setRole(detail.user.role === "moderator" ? "moderator" : "user");
@@ -339,6 +340,41 @@ function AdminInner() {
           </>
         )}
       </section>
+
+      {selectedUser && (
+        <section className="rounded-2xl border border-violet-400/25 bg-surface/90 p-4 shadow-xl sm:p-6" aria-labelledby="profile-admin-title">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">Ficha administrativa</p>
+              <h2 id="profile-admin-title" className="mt-1 text-xl font-bold">{selectedUser.displayName} <span className="text-sm font-normal text-muted">@{selectedUser.username}</span></h2>
+              <p className="mt-1 text-sm text-muted">{selectedUser.email} · {selectedUser.emailVerified ? "Correo verificado" : "Correo pendiente"} · ID: {selectedUser.uid}</p>
+              <p className="mt-1 text-xs text-muted">Estado: {selectedUser.status === "suspended" ? "Suspendido" : "Activo"} · Rol: {selectedUser.role}</p>
+            </div>
+            <button type="button" onClick={() => setSelectedUser(null)} className="rounded-lg border border-line px-3 py-2 text-sm text-muted hover:bg-surface2">Cerrar</button>
+          </div>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="text-sm text-muted">Límite diario (vacío = plan)
+              <input inputMode="numeric" value={dailyLimit} onChange={(e) => setDailyLimit(e.target.value)} placeholder="Automático" className="mt-1 min-h-10 w-full rounded-lg border border-line bg-bg px-3 text-ink outline-none focus:border-violet-400" />
+            </label>
+            <label className="text-sm text-muted">Límite por minuto (vacío = plan)
+              <input inputMode="numeric" value={minuteLimit} onChange={(e) => setMinuteLimit(e.target.value)} placeholder="Automático" className="mt-1 min-h-10 w-full rounded-lg border border-line bg-bg px-3 text-ink outline-none focus:border-violet-400" />
+            </label>
+            {canManageRoles && <label className="text-sm text-muted">Rol
+              <select value={role} onChange={(e) => setRole(e.target.value as "user" | "moderator")} className="mt-1 min-h-10 w-full rounded-lg border border-line bg-bg px-3 text-ink">
+                <option value="user">Usuario</option><option value="moderator">Moderador</option>
+              </select>
+            </label>}
+            <div className="flex items-end gap-2">
+              <button type="button" onClick={() => void saveUserSettings()} disabled={savingProfile || selectedUser.role === "admin"} className="min-h-10 flex-1 rounded-lg bg-violet-500 px-3 text-sm font-semibold text-white disabled:opacity-50">{savingProfile ? "Guardando…" : "Guardar cambios"}</button>
+              <button type="button" onClick={() => void toggleSuspension()} disabled={savingProfile || selectedUser.role === "admin"} className="min-h-10 rounded-lg border border-rose-400/30 px-3 text-sm font-semibold text-rose-300 disabled:opacity-40">{selectedUser.status === "suspended" ? "Reactivar" : "Suspender"}</button>
+            </div>
+          </div>
+          <div className="mt-5 border-t border-line pt-4">
+            <h3 className="font-semibold">Historial de actividad</h3>
+            {activity.length ? <ul className="mt-3 space-y-2">{activity.map((item, i) => <li key={i} className="flex flex-col gap-1 rounded-lg bg-bg/60 p-3 text-sm sm:flex-row sm:items-center sm:justify-between"><span>{item.detail}</span><span className="text-xs text-muted">{item.type} · {new Date(item.at).toLocaleString("es-PE")}</span></li>)}</ul> : <p className="mt-2 text-sm text-muted">Todavía no hay actividad registrada para esta cuenta.</p>}
+          </div>
+        </section>
+      )}
 
       <section className="rounded-2xl border border-line bg-surface/80 p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">

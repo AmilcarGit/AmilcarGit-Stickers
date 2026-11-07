@@ -18,13 +18,17 @@ export type UserRecord = {
   emailVerified: boolean;
   /** Plan de la API (por defecto «free»). Solo lo cambia un moderador. */
   plan?: "free" | "pro" | "ultra";
+  status?: "active" | "suspended";
+  dailyLimit?: number | null;
+  minuteLimit?: number | null;
+  role?: "user" | "moderator";
 };
 
 const VERIFY_TTL = 60 * 60 * 24;
 const RESET_TTL = 60 * 60;
 const lc = (s: string) => s.trim().toLowerCase();
 
-export const isAdmin = (d: Deps, u: UserRecord): boolean => u.emailVerified && d.adminEmails.includes(u.email);
+export const isAdmin = (d: Deps, u: UserRecord): boolean => u.emailVerified && (d.adminEmails.includes(u.email) || u.role === "moderator");
 
 export function toMe(d: Deps, u: UserRecord): MeInfo {
   return { uid: u.uid, username: u.username, displayName: u.displayName, createdAt: u.createdAt, email: u.email, emailVerified: u.emailVerified, admin: isAdmin(d, u), plan: u.plan ?? "free" };
@@ -103,6 +107,8 @@ export async function loginUser(d: Deps, input: { email: string; password: strin
   dummyHash ??= hashPassword("contraseña-falsa-para-igualar-tiempos");
   const ok = await verifyPassword(input.password.slice(0, MAX_PASSWORD_LENGTH), user?.passHash ?? (await dummyHash));
   if (!user || !ok) throw new AppError(401, "Correo o contraseña incorrectos.");
+  if (user.status === "suspended") throw new AppError(403, "Tu cuenta está suspendida. Contacta con soporte.");
+  await recordUserActivity(d, user.uid, "inicio_sesion", "Inicio de sesión correcto");
   return user;
 }
 
@@ -181,6 +187,61 @@ export async function listUsers(d: Deps, offset: number, limit: number): Promise
       emailVerified: u.emailVerified,
       plan: u.plan ?? "free",
       createdAt: u.createdAt,
+      status: u.status ?? "active",
+      dailyLimit: u.dailyLimit ?? null,
+      minuteLimit: u.minuteLimit ?? null,
+      role: u.role ?? (d.adminEmails.includes(u.email) ? "admin" : "user"),
     }));
   return { total, users };
+}
+
+
+export type ActivityEntry = { at: number; type: string; detail: string };
+
+export async function recordUserActivity(d: Deps, uid: string, type: string, detail: string): Promise<void> {
+  const at = Date.now();
+  await d.store.zadd(`activity:${uid}`, at, JSON.stringify({ at, type, detail }));
+}
+
+export async function listUserActivity(d: Deps, uid: string): Promise<ActivityEntry[]> {
+  const rows = await d.store.zrange(`activity:${uid}`, 0, 49, true);
+  return rows.flatMap((raw) => { try { return [JSON.parse(raw) as ActivityEntry]; } catch { return []; } });
+}
+
+export async function recordAdminAction(d: Deps, actor: string, target: string, action: string, detail: string): Promise<void> {
+  const at = Date.now();
+  await d.store.zadd("admin:audit", at, JSON.stringify({ at, actor, target, action, detail }));
+  await recordUserActivity(d, target, action, detail);
+}
+
+export async function updateAdminUser(d: Deps, actor: UserRecord, uid: string, patch: Record<string, unknown>): Promise<UserRecord> {
+  const user = await getUser(d, uid);
+  if (!user) throw new AppError(404, "Usuario no encontrado.");
+  if (d.adminEmails.includes(user.email)) throw new AppError(403, "No puedes modificar una cuenta administradora protegida.");
+  const next: UserRecord = { ...user };
+  if (patch.status !== undefined) {
+    if (patch.status !== "active" && patch.status !== "suspended") throw new AppError(400, "Estado no válido.");
+    next.status = patch.status;
+  }
+  if (patch.dailyLimit !== undefined) {
+    if (patch.dailyLimit !== null && (!Number.isInteger(patch.dailyLimit) || Number(patch.dailyLimit) < 1 || Number(patch.dailyLimit) > 1000000)) throw new AppError(400, "El límite diario debe estar entre 1 y 1.000.000 o ser null.");
+    next.dailyLimit = patch.dailyLimit as number | null;
+  }
+  if (patch.minuteLimit !== undefined) {
+    if (patch.minuteLimit !== null && (!Number.isInteger(patch.minuteLimit) || Number(patch.minuteLimit) < 1 || Number(patch.minuteLimit) > 10000)) throw new AppError(400, "El límite por minuto debe estar entre 1 y 10.000 o ser null.");
+    next.minuteLimit = patch.minuteLimit as number | null;
+  }
+  if (patch.role !== undefined) {
+    if (patch.role !== "user" && patch.role !== "moderator") throw new AppError(400, "Rol no válido.");
+    next.role = patch.role;
+  }
+  if (patch.displayName !== undefined) {
+    if (typeof patch.displayName !== "string" || !patch.displayName.trim() || patch.displayName.length > 60) throw new AppError(400, "El nombre debe tener entre 1 y 60 caracteres.");
+    next.displayName = patch.displayName.trim();
+  }
+  await d.store.set(`user:${uid}`, next);
+  const changed = Object.keys(patch).join(", ");
+  await recordAdminAction(d, actor.uid, uid, "admin_actualizacion", `Campos actualizados: ${changed}`);
+  if (next.status === "suspended") await revokeAllSessions(d, uid);
+  return next;
 }

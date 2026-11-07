@@ -4,6 +4,10 @@ import { normalizeUsername } from "./validators";
 
 /* ------------------------------ Cuenta ------------------------------ */
 
+export async function fetchMyStats(): Promise<{ requestsThisMonth: number }> {
+  return api("/api/me/stats");
+}
+
 export async function fetchMe(): Promise<MeInfo | null> {
   return (await api<{ me: MeInfo | null }>("/api/auth/me")).me;
 }

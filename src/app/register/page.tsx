@@ -15,6 +15,11 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [usernameState, setUsernameState] = useState<"" | "ok" | "taken" | "invalid">("");
   const [busy, setBusy] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
+
+  useEffect(() => {
+    setReferralCode(new URLSearchParams(window.location.search).get("ref") ?? "");
+  }, []);
 
   useEffect(() => {
     if (!loading && user && !busy) router.replace("/dashboard");
@@ -50,6 +55,7 @@ export default function RegisterPage() {
         password: form.password,
         username: form.username,
         displayName: form.displayName.slice(0, 60),
+        referralCode,
       });
       setUser(me);
       toast(
@@ -67,7 +73,7 @@ export default function RegisterPage() {
   return (
     <div className="mx-auto max-w-md">
       <h1 className="text-3xl font-bold">Crear cuenta</h1>
-      <p className="mt-2 text-muted">Gratis. Verificarás tu correo para poder crear claves de API.</p>
+      <p className="mt-2 text-muted">Gratis. Verificarás tu correo para poder crear claves de API.</p>\n      {referralCode && <p className="mt-3 rounded-xl border border-brand/30 bg-brand/5 p-3 text-sm">Invitación aplicada: recibirás puntos extra al verificar tu cuenta.</p>}
       <form onSubmit={submit} className="card mt-6 space-y-4" noValidate>
         <div>
           <label htmlFor="displayName" className="label">

@@ -5,6 +5,7 @@ import { useAuth, useToast } from "@/components/Providers";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { RequireAuth, VerifyBanner } from "@/components/Guards";
 import { Avatar } from "@/components/Avatar";
+import { VerifiedName } from "@/components/VerifiedName";
 import { Mascot } from "@/components/Mascot";
 import { createApiKey, listApiKeys, revokeApiKey, fetchRewards, claimDailyReward, type ApiKeyInfo, type ApiQuota, type RewardsData } from "@/lib/data";
 
@@ -121,7 +122,7 @@ function DashboardInner() {
       <section className="yui-hero" aria-label="Bienvenida">
         <div className="yui-hero-copy">
           <span className="yui-eyebrow"><span className="yui-live-dot" /> TU ESPACIO DE CONTROL</span>
-          <h1>Hola, {user?.displayName || user?.username || "creador"} <span className="yui-wave">✦</span></h1>
+          <h1>Hola, <VerifiedName name={user?.displayName || user?.username || "creador"} badge={user?.verifiedBadge} /> <span className="yui-wave">✦</span></h1>
           <p>Todo lo que necesitas para gestionar tus claves, revisar tu consumo y seguir creciendo con YuiAPI.</p>
           <div className="yui-hero-actions">
             <a href="#mis-claves" className="yui-action-primary">Gestionar mis claves <span aria-hidden="true">↗</span></a>
@@ -230,7 +231,7 @@ function DashboardInner() {
             {rewards.referralUrl && <div className="yui-referral"><div><strong>Invita amigos a YuiAPI</strong><p>Tú recibes 50 puntos y tu amigo 25 cuando verifique su cuenta.</p></div><code>{rewards.referralUrl}</code><button type="button" className="btn-ghost" onClick={copyReferral}>Copiar enlace</button></div>}
             <div className="yui-reward-columns">
               <div className="yui-subpanel"><h3>Insignias</h3><div className="mt-3 grid gap-2 sm:grid-cols-2">{rewards.badges.map((badge) => <div key={badge.id} className={`rounded-xl border p-3 ${badge.unlocked ? "border-brand/50 bg-brand/5" : "border-line opacity-60"}`}><p className="font-semibold">{badge.unlocked ? "🏅 " : "🔒 "}{badge.label}</p><p className="text-xs text-muted">{badge.description}</p></div>)}</div></div>
-              <div className="yui-subpanel"><h3>Ranking de puntos</h3>{rewards.leaderboard.length ? <ol className="mt-3 space-y-2">{rewards.leaderboard.map((entry) => <li key={entry.username} className="flex items-center justify-between gap-3 text-sm"><span>{entry.rank}. {entry.displayName} <span className="text-muted">@{entry.username}</span></span><strong>{entry.points} pts</strong></li>)}</ol> : <p className="mt-2 text-sm text-muted">Aún no hay participantes.</p>}</div>
+              <div className="yui-subpanel"><h3>Ranking de puntos</h3>{rewards.leaderboard.length ? <ol className="mt-3 space-y-2">{rewards.leaderboard.map((entry) => <li key={entry.username} className="flex items-center justify-between gap-3 text-sm"><span>{entry.rank}. <VerifiedName name={entry.displayName} badge={entry.verifiedBadge} /> <span className="text-muted">@{entry.username}</span></span><strong>{entry.points} pts</strong></li>)}</ol> : <p className="mt-2 text-sm text-muted">Aún no hay participantes.</p>}</div>
             </div>
             <div className="yui-subpanel mt-4"><h3>Historial de puntos</h3>{rewards.history.length ? <ul className="mt-2 space-y-1">{rewards.history.slice(0, 8).map((entry, index) => <li key={index} className="flex flex-wrap items-center justify-between gap-2 border-b border-line/60 py-2 text-sm last:border-0"><span>{entry.reason}</span><strong className="text-emerald-400">+{entry.amount} pts</strong></li>)}</ul> : <p className="mt-2 text-sm text-muted">Tus movimientos aparecerán aquí.</p>}</div>
           </section>}

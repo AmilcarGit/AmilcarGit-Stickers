@@ -173,7 +173,7 @@ export default function EndpointsPage() {
 
             {selected.body === "file" && (
               <div>
-                <label htmlFor="file" className="label">Archivo de entrada (máx. 8 MB)</label>
+                <label htmlFor="file" className="label">Archivo de entrada (máx. 4 MB)</label>
                 <input id="file" type="file" className="input py-2" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
                 {file && <p className="hint">{file.name} · {(file.size / 1024).toFixed(1)} KB</p>}
               </div>

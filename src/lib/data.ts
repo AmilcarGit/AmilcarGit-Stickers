@@ -66,8 +66,8 @@ export async function revokeApiKey(id: string): Promise<void> {
   await api(`/api/keys/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
-export async function setUserPlan(uid: string, plan: "free" | "pro" | "ultra"): Promise<void> {
-  await api(`/api/admin/users/${encodeURIComponent(uid)}/plan`, { method: "POST", body: { plan } });
+export async function setUserPlan(uid: string, plan: string, durationDays?: number): Promise<void> {
+  await api(`/api/admin/users/${encodeURIComponent(uid)}/plan`, { method: "POST", body: { plan, durationDays } });
 }
 
 
@@ -87,4 +87,35 @@ export async function updateAdminUser(uid: string, patch: { status?: "active" | 
 export type AdminAuditEntry = { at: number; actor: string; target: string; action: string; detail: string };
 export async function getAdminAudit(): Promise<AdminAuditEntry[]> {
   return (await api<{ actions: AdminAuditEntry[] }>("/api/admin/audit")).actions;
+}
+
+
+export type AdminPlan = { id: string; label: string; perDay: number; perMinute: number };
+export type ApiKeyUsage = { day: string; requests: number };
+export async function listAdminKeys(uid: string): Promise<ApiKeyInfo[]> {
+  return (await api<{ keys: ApiKeyInfo[] }>(`/api/admin/users/${encodeURIComponent(uid)}/keys`)).keys;
+}
+export async function createAdminKey(uid: string, name: string): Promise<{ key: string; info: ApiKeyInfo }> {
+  return api(`/api/admin/users/${encodeURIComponent(uid)}/keys`, { method: "POST", body: { name } });
+}
+export async function updateAdminKey(uid: string, id: string, patch: { dailyLimit?: number | null; minuteLimit?: number | null }): Promise<ApiKeyInfo> {
+  return (await api<{ key: ApiKeyInfo }>(`/api/admin/users/${encodeURIComponent(uid)}/keys/${encodeURIComponent(id)}`, { method: "PATCH", body: patch })).key;
+}
+export async function revokeAdminKey(uid: string, id: string): Promise<void> {
+  await api(`/api/admin/users/${encodeURIComponent(uid)}/keys/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+export async function rotateAdminKey(uid: string, id: string): Promise<{ key: string; info: ApiKeyInfo }> {
+  return api(`/api/admin/users/${encodeURIComponent(uid)}/keys/${encodeURIComponent(id)}`, { method: "POST" });
+}
+export async function getAdminKeyUsage(uid: string, id: string): Promise<ApiKeyUsage[]> {
+  return (await api<{ history: ApiKeyUsage[] }>(`/api/admin/users/${encodeURIComponent(uid)}/keys/${encodeURIComponent(id)}`)).history;
+}
+export async function listAdminPlans(): Promise<AdminPlan[]> {
+  return (await api<{ plans: AdminPlan[] }>("/api/admin/plans")).plans;
+}
+export async function saveAdminPlan(plan: { id?: string; label: string; perDay: number; perMinute: number }): Promise<AdminPlan> {
+  return (await api<{ plan: AdminPlan }>("/api/admin/plans", { method: "POST", body: plan })).plan;
+}
+export async function deleteAdminPlan(id: string): Promise<void> {
+  await api(`/api/admin/plans?id=${encodeURIComponent(id)}`, { method: "DELETE" });
 }

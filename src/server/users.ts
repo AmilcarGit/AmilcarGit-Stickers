@@ -275,12 +275,14 @@ export async function updateAdminUser(d: Deps, actor: UserRecord, uid: string, p
     if (!Array.isArray(patch.adminBadges) || patch.adminBadges.length > 12) throw new AppError(400, "Puedes asignar hasta 12 insignias.");
     const colors = ["gold", "blue", "purple", "pink", "green", "rainbow"];
     const badges: AdminBadge[] = [];
+    const previousBadges = new Map((user.adminBadges ?? []).map((badge) => [badge.id, badge]));
     for (const raw of patch.adminBadges) {
       if (!raw || typeof raw !== "object") throw new AppError(400, "Insignia no válida.");
       const item = raw as Record<string, unknown>;
       if (typeof item.id !== "string" || !/^[a-z0-9-]{1,40}$/.test(item.id) || typeof item.label !== "string" || !item.label.trim() || item.label.length > 28 || typeof item.icon !== "string" || !item.icon.trim() || item.icon.length > 8 || !colors.includes(String(item.color))) throw new AppError(400, "Revisa el nombre, icono o color de la insignia.");
       if (item.id === "amilcargit" && d.adminEmails[0] !== actor.email) throw new AppError(403, "La insignia AmilcarGit está reservada al creador.");
-      badges.push({ id: item.id, label: item.id === "amilcargit" ? "AmilcarGit" : item.label.trim(), icon: item.id === "amilcargit" ? "♛" : item.icon.trim(), color: item.color as AdminBadge["color"], reason: typeof item.reason === "string" ? item.reason.trim().slice(0, 120) : "", awardedAt: Date.now(), awardedBy: actor.uid });
+      const previous = previousBadges.get(item.id);
+      badges.push({ id: item.id, label: item.id === "amilcargit" ? "AmilcarGit" : item.label.trim(), icon: item.id === "amilcargit" ? "♛" : item.icon.trim(), color: item.color as AdminBadge["color"], reason: typeof item.reason === "string" ? item.reason.trim().slice(0, 120) : "", awardedAt: previous?.awardedAt ?? Date.now(), awardedBy: previous?.awardedBy ?? actor.uid });
     }
     if (new Set(badges.map((badge) => badge.id)).size !== badges.length) throw new AppError(400, "No puedes repetir una insignia.");
     next.adminBadges = badges;

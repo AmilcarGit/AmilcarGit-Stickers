@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RequireAdmin } from "@/components/Guards";
 import { useToast } from "@/components/Providers";
-import { getAdminAudit, getAdminUser, listUsers, setUserPlan, updateAdminUser } from "@/lib/data";
+import { createAdminKey, deleteAdminPlan, getAdminAudit, getAdminKeyUsage, getAdminUser, listAdminKeys, listAdminPlans, listUsers, revokeAdminKey, rotateAdminKey, saveAdminPlan, setUserPlan, updateAdminKey, updateAdminUser } from "@/lib/data";\nimport type { AdminPlan, ApiKeyInfo, ApiKeyUsage } from "@/lib/data";
 import type { UserRow } from "@/lib/types";
 
 function formatDate(value: number) {
@@ -30,7 +30,7 @@ function AdminInner() {
   const [role, setRole] = useState<"user" | "moderator">("user");
   const [canManageRoles, setCanManageRoles] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
-  const [audit, setAudit] = useState<{ at: number; actor: string; target: string; action: string; detail: string }[]>([]);
+  const [audit, setAudit] = useState<{ at: number; actor: string; target: string; action: string; detail: string }[]>([]);\n  const [adminKeys, setAdminKeys] = useState<ApiKeyInfo[]>([]);\n  const [adminPlans, setAdminPlans] = useState<AdminPlan[]>([]);\n  const [newKeyName, setNewKeyName] = useState("");\n  const [revealedKey, setRevealedKey] = useState("");\n  const [planName, setPlanName] = useState("");\n  const [planDaily, setPlanDaily] = useState("500");\n  const [planMinute, setPlanMinute] = useState("60");\n  const [selectedPlan, setSelectedPlan] = useState("free");\n  const [planDays, setPlanDays] = useState("");\n  const [keyHistory, setKeyHistory] = useState<{ id: string; rows: ApiKeyUsage[] } | null>(null);
 
   const loadUsers = useCallback(async (offset: number) => {
     try {
@@ -48,7 +48,7 @@ function AdminInner() {
 
   useEffect(() => {
     void loadUsers(0);
-    void getAdminAudit().then(setAudit).catch(() => undefined);
+    void getAdminAudit().then(setAudit).catch(() => undefined);\n    void listAdminPlans().then(setAdminPlans).catch(() => undefined);
   }, [loadUsers]);
 
   async function refresh() {
@@ -89,7 +89,7 @@ function AdminInner() {
       setCanManageRoles(detail.canManageRoles);
       setDailyLimit(detail.user.dailyLimit == null ? "" : String(detail.user.dailyLimit));
       setMinuteLimit(detail.user.minuteLimit == null ? "" : String(detail.user.minuteLimit));
-      setRole(detail.user.role === "moderator" ? "moderator" : "user");
+      setRole(detail.user.role === "moderator" ? "moderator" : "user");\n      setSelectedPlan(detail.user.plan);\n      setPlanDays("");\n      setRevealedKey("");\n      setKeyHistory(null);\n      setAdminKeys(await listAdminKeys(u.uid));
     } catch (err) {
       toast(err instanceof Error ? err.message : "No se pudo cargar el perfil.", "error");
     }
@@ -138,7 +138,100 @@ function AdminInner() {
     }
   }
 
-  const filteredUsers = useMemo(() => {
+
+  async function createKeyForSelectedUser() {
+    if (!selectedUser || !newKeyName.trim()) return;
+    try {
+      const result = await createAdminKey(selectedUser.uid, newKeyName.trim());
+      setRevealedKey(result.key);
+      setNewKeyName("");
+      setAdminKeys(await listAdminKeys(selectedUser.uid));
+      toast("Clave creada. Copia el secreto ahora; no volverá a mostrarse.", "ok");
+    } catch (err) { toast(err instanceof Error ? err.message : "No se pudo crear la clave.", "error"); }
+  }
+
+  async function revokeKey(id: string) {
+    if (!selectedUser || !window.confirm("¿Revocar esta clave? La integración que la usa dejará de funcionar.")) return;
+    try {
+      await revokeAdminKey(selectedUser.uid, id);
+      setAdminKeys(await listAdminKeys(selectedUser.uid));
+      if (keyHistory?.id === id) setKeyHistory(null);
+      toast("Clave revocada.", "ok");
+    } catch (err) { toast(err instanceof Error ? err.message : "No se pudo revocar la clave.", "error"); }
+  }
+
+  async function rotateKey(id: string) {
+    if (!selectedUser || !window.confirm("¿Rotar esta clave? La clave anterior se revocará y tendrás que actualizar la integración.")) return;
+    try {
+      const result = await rotateAdminKey(selectedUser.uid, id);
+      setRevealedKey(result.key);
+      setAdminKeys(await listAdminKeys(selectedUser.uid));
+      toast("Clave rotada. Copia el nuevo secreto ahora.", "ok");
+    } catch (err) { toast(err instanceof Error ? err.message : "No se pudo rotar la clave.", "error"); }
+  }
+
+  async function editKeyLimits(key: ApiKeyInfo) {
+    if (!selectedUser) return;
+    const dailyRaw = window.prompt("Límite diario para esta clave (vacío = límite del usuario)", key.dailyLimit == null ? "" : String(key.dailyLimit));
+    if (dailyRaw === null) return;
+    const minuteRaw = window.prompt("Límite por minuto para esta clave (vacío = límite del usuario)", key.minuteLimit == null ? "" : String(key.minuteLimit));
+    if (minuteRaw === null) return;
+    const dailyLimit = dailyRaw.trim() ? Number(dailyRaw) : null;
+    const minuteLimit = minuteRaw.trim() ? Number(minuteRaw) : null;
+    try {
+      await updateAdminKey(selectedUser.uid, key.id, { dailyLimit, minuteLimit });
+      setAdminKeys(await listAdminKeys(selectedUser.uid));
+      toast("Límites de clave actualizados.", "ok");
+    } catch (err) { toast(err instanceof Error ? err.message : "Límites no válidos.", "error"); }
+  }
+
+  async function showKeyHistory(id: string) {
+    if (!selectedUser) return;
+    try { setKeyHistory({ id, rows: await getAdminKeyUsage(selectedUser.uid, id) }); }
+    catch (err) { toast(err instanceof Error ? err.message : "No se pudo cargar el historial.", "error"); }
+  }
+
+  async function assignSelectedPlan() {
+    if (!selectedUser) return;
+    const days = planDays.trim() ? Number(planDays) : undefined;
+    if (days !== undefined && (!Number.isInteger(days) || days < 1 || days > 3650)) {
+      toast("La duración debe estar entre 1 y 3650 días.", "error");
+      return;
+    }
+    try {
+      await setUserPlan(selectedUser.uid, selectedPlan, days);
+      const detail = await getAdminUser(selectedUser.uid);
+      setSelectedUser(detail.user);
+      setUsers((items) => items.map((item) => item.uid === selectedUser.uid ? detail.user : item));
+      setActivity(detail.activity);
+      toast("Plan asignado correctamente.", "ok");
+    } catch (err) { toast(err instanceof Error ? err.message : "No se pudo asignar el plan.", "error"); }
+  }
+
+  async function createCustomPlan() {
+    const perDay = Number(planDaily), perMinute = Number(planMinute);
+    if (!planName.trim() || !Number.isInteger(perDay) || perDay < 1 || perDay > 1000000 || !Number.isInteger(perMinute) || perMinute < 1 || perMinute > 10000) {
+      toast("Completa nombre y límites válidos para el plan.", "error");
+      return;
+    }
+    try {
+      const plan = await saveAdminPlan({ label: planName.trim(), perDay, perMinute });
+      setAdminPlans((items) => [...items, plan]);
+      setPlanName("");
+      toast("Plan personalizado creado.", "ok");
+    } catch (err) { toast(err instanceof Error ? err.message : "No se pudo crear el plan.", "error"); }
+  }
+
+  async function removeCustomPlan(id: string) {
+    if (!window.confirm("¿Eliminar este plan personalizado? Solo se permite si ningún usuario lo tiene asignado.")) return;
+    try {
+      await deleteAdminPlan(id);
+      setAdminPlans(await listAdminPlans());
+      toast("Plan eliminado.", "ok");
+    } catch (err) { toast(err instanceof Error ? err.message : "No se pudo eliminar; comprueba si está asignado.", "error"); }
+  }
+
+\n  const filteredUsers = useMemo(() => {
     const term = query.trim().toLocaleLowerCase("es");
     if (!term) return users;
     return users.filter((u) =>

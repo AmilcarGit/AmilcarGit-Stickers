@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Deps } from "./deps";
 import { MemoryStore } from "./memory-store";
+import { userMonthlyUsage } from "./profile";
 import { saveProfile, toMe, type UserRecord } from "./users";
 
 let store: MemoryStore;
@@ -46,6 +47,11 @@ describe("perfil personal", () => {
     expect(updated.passHash).toBe(user.passHash);
     expect(updated.plan).toBe("pro");
     expect(updated.avatarV).toBe(123);
+  });
+
+  it("lee las solicitudes del mes actual desde el contador de uso", async () => {
+    await store.hincrby("usage:202611", user.uid, 23);
+    await expect(userMonthlyUsage(d, user.uid, Date.parse("2026-11-07T15:00:00Z"))).resolves.toBe(23);
   });
 
   it("incluye los campos de perfil en la respuesta propia sin exponer secretos", async () => {

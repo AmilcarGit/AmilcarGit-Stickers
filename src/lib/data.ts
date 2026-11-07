@@ -52,7 +52,7 @@ export async function listUsers(offset: number): Promise<{ total: number; users:
 /* ------------------------------ Claves de API ------------------------------ */
 
 export type ApiKeyInfo = { id: string; name: string; prefix: string; createdAt: number; lastUsedAt: number; dailyLimit: number | null; minuteLimit: number | null };
-export type ApiQuota = { plan: "free" | "pro" | "ultra"; limit: number; used: number; remaining: number; resetAt: number };
+export type ApiQuota = { plan: string; limit: number; used: number; remaining: number; resetAt: number };
 
 export async function listApiKeys(): Promise<{ keys: ApiKeyInfo[]; quota: ApiQuota }> {
   return api("/api/keys");

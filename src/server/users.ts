@@ -204,7 +204,7 @@ export async function recordUserActivity(d: Deps, uid: string, type: string, det
   await d.store.zadd(key, at, JSON.stringify({ at, type, detail }));
   if (await d.store.zcard(key) > 100) {
     const old = await d.store.zrange(key, 0, -101);
-    if (old.length) await d.store.zrem(key, ...old);
+    for (const member of old) await d.store.zrem(key, member);
   }
 }
 
@@ -218,7 +218,7 @@ export async function recordAdminAction(d: Deps, actor: string, target: string, 
   await d.store.zadd("admin:audit", at, JSON.stringify({ at, actor, target, action, detail }));
   if (await d.store.zcard("admin:audit") > 500) {
     const old = await d.store.zrange("admin:audit", 0, -501);
-    if (old.length) await d.store.zrem("admin:audit", ...old);
+    for (const member of old) await d.store.zrem("admin:audit", member);
   }
   await recordUserActivity(d, target, action, detail);
 }

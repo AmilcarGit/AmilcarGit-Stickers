@@ -31,7 +31,7 @@ export async function prepareReferral(d: Deps, uid: string, rawCode?: unknown): 
 export async function completeReferral(d: Deps, user: UserRecord): Promise<void> {
   if (!user.referredBy || user.referredBy === user.uid) return;
   const referrer = await getUser(d, user.referredBy);
-  if (!referrer || referrer.status === "suspended") return;
+  if (!referrer || !referrer.emailVerified || referrer.status === "suspended") return;
   const once = `referral:${user.uid}`;
   if (!(await d.store.set(`rewards:once:${once}`, "1", { nx: true }))) return;
   // La marca única impide que una verificación repetida duplique recompensas.
@@ -70,7 +70,7 @@ export async function getRewards(d: Deps, uid: string, now = Date.now()) {
     d.store.smembers(`rewards:referrals:${uid}`),
     d.store.get<{ day: string; streak: number }>(`rewards:streak:${uid}`),
     d.store.zrange(`rewards:history:${uid}`, 0, 19, true),
-    d.store.zrange("rewards:leaderboard", 0, 99, true),
+    d.store.zrange("rewards:leaderboard", 0, 499, true),
   ]);
   const entries = await d.store.mget<{ at: number; amount: number; reason: string; balance?: number }>(ids.map((id) => `rewards:entry:${id}`));
   const today = dayKey(now);
@@ -83,13 +83,15 @@ export async function getRewards(d: Deps, uid: string, now = Date.now()) {
     { id: "streak_7", label: "Constancia", description: "Mantén una racha de 7 días", unlocked: (streak?.streak ?? 0) >= 7 },
     { id: "legend", label: "Leyenda", description: "Alcanza 1.000 puntos", unlocked: balance >= 1000 },
   ];
-  const boardUsers = await d.store.mget<UserRecord>(rankIds.map((id) => `user:${id}`));
-  const leaderboard = rankIds.flatMap((id, i) => {
+  const [boardUsers, pointValues] = await Promise.all([
+    d.store.mget<UserRecord>(rankIds.map((id) => `user:${id}`)),
+    Promise.all(rankIds.map((id) => d.store.hget("rewards:balances", id))),
+  ]);
+  const resolved = rankIds.flatMap((id, i) => {
     const u = boardUsers[i];
     if (!u || u.showInRanking === false) return [];
-    return [{ rank: 0, username: u.username, displayName: u.displayName, points: d.store.hget("rewards:balances", id) }];
+    return [{ rank: 0, username: u.username, displayName: u.displayName, points: pointValues[i] }];
   });
-  const resolved = await Promise.all(leaderboard.map(async (entry) => ({ ...entry, points: await entry.points })));
   resolved.sort((a, b) => b.points - a.points);
   resolved.forEach((entry, i) => { entry.rank = i + 1; });
   return {

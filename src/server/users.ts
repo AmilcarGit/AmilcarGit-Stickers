@@ -233,11 +233,11 @@ export async function updateAdminUser(d: Deps, actor: UserRecord, uid: string, p
     next.status = patch.status;
   }
   if (patch.dailyLimit !== undefined) {
-    if (patch.dailyLimit !== null && (!Number.isInteger(Number(patch.dailyLimit)) || Number(patch.dailyLimit) < 1 || Number(patch.dailyLimit) > 1000000)) throw new AppError(400, "El límite diario debe estar entre 1 y 1.000.000 o ser null.");
+    if (patch.dailyLimit !== null && (typeof patch.dailyLimit !== "number" || !Number.isInteger(patch.dailyLimit) || patch.dailyLimit < 1 || patch.dailyLimit > 1000000)) throw new AppError(400, "El límite diario debe estar entre 1 y 1.000.000 o ser null.");
     next.dailyLimit = patch.dailyLimit as number | null;
   }
   if (patch.minuteLimit !== undefined) {
-    if (patch.minuteLimit !== null && (!Number.isInteger(Number(patch.minuteLimit)) || Number(patch.minuteLimit) < 1 || Number(patch.minuteLimit) > 10000)) throw new AppError(400, "El límite por minuto debe estar entre 1 y 10.000 o ser null.");
+    if (patch.minuteLimit !== null && (typeof patch.minuteLimit !== "number" || !Number.isInteger(patch.minuteLimit) || patch.minuteLimit < 1 || patch.minuteLimit > 10000)) throw new AppError(400, "El límite por minuto debe estar entre 1 y 10.000 o ser null.");
     next.minuteLimit = patch.minuteLimit as number | null;
   }
   if (patch.role !== undefined) {

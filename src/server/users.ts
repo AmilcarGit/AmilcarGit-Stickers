@@ -203,6 +203,7 @@ export async function listUsers(d: Deps, offset: number, limit: number): Promise
       username: u.username,
       displayName: u.displayName,
       verifiedBadge: u.verifiedBadge ?? null,
+      adminBadges: [...(u.adminBadges ?? []), ...(d.adminEmails[0] === u.email ? [{ id: "amilcargit", label: "AmilcarGit", icon: "♛", color: "rainbow" as const, reason: "Creador de YuiAPI", awardedAt: u.createdAt, awardedBy: "system" }] : [])],
       email: u.email,
       emailVerified: u.emailVerified,
       plan: u.planExpiresAt && u.planExpiresAt <= Date.now() ? "free" : u.plan ?? "free",

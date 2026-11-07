@@ -36,7 +36,7 @@ const hashOf = (key: string) => sha256(key);
 const toInfo = (r: KeyRecord): KeyInfo => ({ id: r.id, name: r.name, prefix: r.prefix, createdAt: r.createdAt, lastUsedAt: r.lastUsedAt, dailyLimit: r.dailyLimit ?? null, minuteLimit: r.minuteLimit ?? null });
 
 export async function getPlanConfig(d: Deps, id: string): Promise<PlanConfig | null> {
-  if (id in PLANS) return { id, ...PLANS[id as keyof typeof PLANS] };
+  if (Object.prototype.hasOwnProperty.call(PLANS, id)) return { id, ...PLANS[id as keyof typeof PLANS] };
   return d.store.get<PlanConfig>(`plan:${id}`);
 }
 export async function listPlans(d: Deps): Promise<PlanConfig[]> {
@@ -91,7 +91,7 @@ export async function createAdminApiKey(d: Deps, uid: string, rawName: unknown) 
   return createKeyForUser(d, user, rawName, true);
 }
 async function findKey(d: Deps, uid: string, id: string): Promise<{ hash: string; rec: KeyRecord }> {
-  const hashes = await d.store.zrange(`apikeys:${uid}`, 0, MAX_KEYS_PER_USER - 1, true);
+  const hashes = await d.store.zrange(`apikeys:${uid}`, 0, -1, true);
   const hash = hashes.find((h) => h.startsWith(id) && id.length === 16);
   const rec = hash ? await d.store.get<KeyRecord>(`apikey:${hash}`) : null;
   if (!hash || !rec || rec.uid !== uid) throw new AppError(404, "Clave no encontrada.");
@@ -168,6 +168,13 @@ export async function authenticateApiKey(d: Deps, raw: string | null, nowMs = Da
   if (nowMs - rec.lastUsedAt > 60_000) await d.store.set(`apikey:${hash}`, { ...rec, lastUsedAt: nowMs });
   await d.store.hincrby(`apikey-usage:${rec.id}:${stamp}`, "requests", 1);
   await d.store.zadd(`apikey-days:${rec.id}`, nowMs, stamp);
+  if (await d.store.zcard(`apikey-days:${rec.id}`) > 30) {
+    const oldDays = await d.store.zrange(`apikey-days:${rec.id}`, 0, -31);
+    for (const oldDay of oldDays) {
+      await d.store.del(`apikey-usage:${rec.id}:${oldDay}`);
+      await d.store.zrem(`apikey-days:${rec.id}`, oldDay);
+    }
+  }
   await recordUserActivity(d, user.uid, "uso_api", `Solicitud API con clave ${rec.prefix}…`);
   return { user, keyId: rec.id, quota: { plan: active.id, limit: userLimit, used, remaining: userLimit - used, resetAt: nextResetMs(nowMs) } };
 }

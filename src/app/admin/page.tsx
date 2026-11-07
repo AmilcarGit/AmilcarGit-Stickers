@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RequireAdmin } from "@/components/Guards";
 import { useToast } from "@/components/Providers";
-import { getAdminUser, listUsers, setUserPlan, updateAdminUser } from "@/lib/data";
+import { getAdminAudit, getAdminUser, listUsers, setUserPlan, updateAdminUser } from "@/lib/data";
 import type { UserRow } from "@/lib/types";
 
 function formatDate(value: number) {
@@ -29,7 +29,7 @@ function AdminInner() {
   const [minuteLimit, setMinuteLimit] = useState("");
   const [role, setRole] = useState<"user" | "moderator">("user");
   const [canManageRoles, setCanManageRoles] = useState(false);
-  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);\n  const [audit, setAudit] = useState<{ at: number; actor: string; target: string; action: string; detail: string }[]>([]);
 
   const loadUsers = useCallback(async (offset: number) => {
     try {
@@ -336,6 +336,14 @@ function AdminInner() {
             </div>
           </>
         )}
+      </section>
+
+      <section className="rounded-2xl border border-line bg-surface/80 p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div><h2 className="text-lg font-bold">Registro de acciones administrativas</h2><p className="mt-1 text-sm text-muted">Últimos cambios realizados desde el panel.</p></div>
+          <button type="button" onClick={() => void getAdminAudit().then(setAudit).catch(() => toast("No se pudo cargar la auditoría.", "error"))} className="rounded-lg border border-line px-3 py-2 text-xs font-semibold text-muted hover:bg-surface2">Actualizar</button>
+        </div>
+        {audit.length ? <ul className="mt-4 space-y-2">{audit.map((item, i) => <li key={i} className="rounded-lg border border-line/70 bg-bg/50 p-3 text-sm"><div className="flex flex-wrap justify-between gap-2"><strong>{item.action}</strong><span className="text-xs text-muted">{new Date(item.at).toLocaleString("es-PE")}</span></div><p className="mt-1 text-muted">{item.detail}</p><p className="mt-1 text-xs text-muted">Operador: {item.actor} · Usuario: {item.target}</p></li>)}</ul> : <p className="mt-4 text-sm text-muted">Todavía no hay acciones administrativas registradas.</p>}
       </section>
 
       <p className="text-center text-xs text-muted">

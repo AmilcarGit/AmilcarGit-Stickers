@@ -152,8 +152,8 @@ export async function authenticateApiKey(d: Deps, raw: string | null, nowMs = Da
   if (!rec || !user) throw new AppError(401, "Clave de API inválida o revocada.");
   if (user.status === "suspended") throw new AppError(403, "La cuenta asociada a esta clave está suspendida.");
   const active = await effectivePlan(d, user, nowMs);
-  const minuteLimit = rec.minuteLimit ?? user.minuteLimit ?? active.config.perMinute;
-  if (!(await hit(d.store, `rl:key:${hash}`, minuteLimit, 60)) || !(await hit(d.store, `rl:api:${user.uid}`, user.minuteLimit ?? active.config.perMinute, 60))) throw new AppError(429, "Demasiadas solicitudes por minuto. Espera unos segundos.");
+  const keyRateAllowed = rec.minuteLimit === null || rec.minuteLimit === undefined || await hit(d.store, `rl:key:${hash}`, rec.minuteLimit, 60);
+  if (!keyRateAllowed || !(await hit(d.store, `rl:api:${user.uid}`, user.minuteLimit ?? active.config.perMinute, 60))) throw new AppError(429, "Demasiadas solicitudes por minuto. Espera unos segundos.");
   const stamp = dayStamp(nowMs);
   const userQuotaKey = `quota:${user.uid}:${stamp}`;
   const used = await d.store.incr(userQuotaKey);

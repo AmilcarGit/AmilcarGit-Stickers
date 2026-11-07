@@ -13,7 +13,7 @@ export async function usernameAvailable(raw: string): Promise<boolean> {
   return (await api<{ available: boolean }>(`/api/username?name=${name}`)).available;
 }
 
-export async function registerUser(input: { email: string; password: string; username: string; displayName: string }): Promise<{ me: MeInfo; emailSent: boolean }> {
+export async function registerUser(input: { email: string; password: string; username: string; displayName: string; referralCode?: string }): Promise<{ me: MeInfo; emailSent: boolean }> {
   return api("/api/auth/register", { method: "POST", body: input });
 }
 

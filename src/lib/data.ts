@@ -69,3 +69,16 @@ export async function revokeApiKey(id: string): Promise<void> {
 export async function setUserPlan(uid: string, plan: "free" | "pro" | "ultra"): Promise<void> {
   await api(`/api/admin/users/${encodeURIComponent(uid)}/plan`, { method: "POST", body: { plan } });
 }
+
+
+export type AdminActivity = { at: number; type: string; detail: string };
+export type AdminUserDetail = UserRow & { activity: AdminActivity[] };
+
+export async function getAdminUser(uid: string): Promise<AdminUserDetail> {
+  return api(`/api/admin/users/${encodeURIComponent(uid)}`);
+}
+
+export async function updateAdminUser(uid: string, patch: { status?: "active" | "suspended"; dailyLimit?: number | null; minuteLimit?: number | null; role?: "user" | "moderator"; displayName?: string }): Promise<UserRow> {
+  const result = await api<{ user: UserRow }>(`/api/admin/users/${encodeURIComponent(uid)}`, { method: "PATCH", body: patch });
+  return result.user;
+}

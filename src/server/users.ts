@@ -28,6 +28,8 @@ export type UserRecord = {
   avatarV?: number;
   /** Aparecer en el ranking público de uso (por defecto sí). */
   showInRanking?: boolean;
+  bio?: string;
+  location?: string;
   referralCode?: string;
   referredBy?: string;
 };
@@ -39,7 +41,7 @@ const lc = (s: string) => s.trim().toLowerCase();
 export const isAdmin = (d: Deps, u: UserRecord): boolean => u.emailVerified && (d.adminEmails.includes(u.email) || u.role === "moderator");
 
 export function toMe(d: Deps, u: UserRecord): MeInfo {
-  return { uid: u.uid, username: u.username, displayName: u.displayName, createdAt: u.createdAt, email: u.email, emailVerified: u.emailVerified, admin: isAdmin(d, u), plan: u.planExpiresAt && u.planExpiresAt <= Date.now() ? "free" : u.plan ?? "free", planExpiresAt: u.planExpiresAt ?? null, avatarV: u.avatarV ?? 0, showInRanking: u.showInRanking !== false };
+  return { uid: u.uid, username: u.username, displayName: u.displayName, createdAt: u.createdAt, email: u.email, emailVerified: u.emailVerified, admin: isAdmin(d, u), plan: u.planExpiresAt && u.planExpiresAt <= Date.now() ? "free" : u.plan ?? "free", planExpiresAt: u.planExpiresAt ?? null, avatarV: u.avatarV ?? 0, showInRanking: u.showInRanking !== false, bio: u.bio ?? "", location: u.location ?? "" };
 }
 
 export async function getUser(d: Deps, uid: string): Promise<UserRecord | null> {
@@ -177,11 +179,13 @@ export async function resetPassword(d: Deps, token: string, password: string): P
   await revokeAllSessions(d, user.uid);
 }
 
-export async function saveProfile(d: Deps, uid: string, patch: { displayName?: unknown }): Promise<UserRecord> {
+export async function saveProfile(d: Deps, uid: string, patch: { displayName?: unknown; bio?: unknown; location?: unknown }): Promise<UserRecord> {
   const user = await getUser(d, uid);
   if (!user) throw new AppError(404, "Cuenta no encontrada.");
   const next = { ...user };
   if (typeof patch.displayName === "string") next.displayName = patch.displayName.trim().slice(0, 60) || user.username;
+  if (typeof patch.bio === "string") next.bio = patch.bio.trim().slice(0, 160);
+  if (typeof patch.location === "string") next.location = patch.location.trim().slice(0, 60);
   await d.store.set(`user:${uid}`, next);
   return next;
 }

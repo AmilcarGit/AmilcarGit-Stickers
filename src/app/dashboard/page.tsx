@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useAuth } from "@/components/Providers";
+import { useAuth, useToast } from "@/components/Providers";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { RequireAuth, VerifyBanner } from "@/components/Guards";
-import { useToast } from "@/components/Providers";
+import { Avatar } from "@/components/Avatar";
+import { Mascot } from "@/components/Mascot";
 import { createApiKey, listApiKeys, revokeApiKey, fetchRewards, claimDailyReward, type ApiKeyInfo, type ApiQuota, type RewardsData } from "@/lib/data";
 
 function DashboardInner() {
@@ -110,143 +111,140 @@ function DashboardInner() {
     }
   }
 
+  const usedPercent = quota ? Math.min(100, Math.max(0, (quota.used / Math.max(1, quota.limit)) * 100)) : 0;
+  const memberSince = user?.createdAt ? new Date(user.createdAt).toLocaleDateString("es-PE", { month: "long", year: "numeric" }) : "Miembro YuiAPI";
+
   return (
-    <div className="yui-dashboard mx-auto max-w-5xl space-y-8">
+    <div className="yui-dashboard mx-auto max-w-6xl space-y-6">
       <VerifyBanner />
-      <header>
-        <h1 className="text-3xl font-bold">Mi panel</h1>
-        <p className="mt-1 text-muted">
-          Claves para usar la API desde tus bots y apps. Mira los endpoints en la{" "}
-          <Link href="/docs" className="text-brand underline">
-            documentación
-          </Link>
-          .
-        </p>
-      </header>
 
-      {rewards && (
-        <section aria-label="Puntos y recompensas" className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="card"><p className="text-sm text-muted">Tus puntos</p><p className="mt-1 text-3xl font-extrabold text-accent">{rewards.points.toLocaleString("es-PE")}</p></div>
-            <div className="card"><p className="text-sm text-muted">Invitaciones verificadas</p><p className="mt-1 text-3xl font-extrabold">{rewards.referrals}</p></div>
-            <div className="card"><p className="text-sm text-muted">Racha diaria</p><p className="mt-1 text-3xl font-extrabold">{rewards.daily.streak} días</p></div>
+      <section className="yui-hero" aria-label="Bienvenida">
+        <div className="yui-hero-copy">
+          <span className="yui-eyebrow"><span className="yui-live-dot" /> TU ESPACIO DE CONTROL</span>
+          <h1>Hola, {user?.displayName || user?.username || "creador"} <span className="yui-wave">✦</span></h1>
+          <p>Todo lo que necesitas para gestionar tus claves, revisar tu consumo y seguir creciendo con YuiAPI.</p>
+          <div className="yui-hero-actions">
+            <a href="#mis-claves" className="yui-action-primary">Gestionar mis claves <span aria-hidden="true">↗</span></a>
+            <Link href="/docs" className="yui-action-secondary">Ver documentación</Link>
           </div>
-          <div className="card flex flex-wrap items-center justify-between gap-3">
-            <div><h2 className="font-bold">Bonificación diaria</h2><p className="text-sm text-muted">Consigue puntos cada día. La recompensa aumenta con tu racha.</p></div>
-            <button type="button" className="btn-primary" disabled={rewardBusy || rewards.daily.claimed || !user?.emailVerified} onClick={claimDaily}>
-              {rewards.daily.claimed ? "Ya reclamada hoy" : rewardBusy ? "Reclamando…" : `Reclamar +${rewards.daily.nextPoints} puntos`}
-            </button>
+          <div className="yui-hero-meta">
+            <span><span className="yui-status-dot" /> Cuenta {user?.emailVerified ? "verificada" : "pendiente de verificación"}</span>
+            <span>Miembro desde {memberSince}</span>
           </div>
-          {!user?.emailVerified && <p className="hint">Verifica tu correo para reclamar bonificaciones y participar en invitaciones.</p>}
-          {rewards.referralUrl && (
-            <div className="card">
-              <h2 className="font-bold">Invita amigos y gana puntos</h2>
-              <p className="mt-1 text-sm text-muted">Tú recibes 50 puntos y tu amigo 25 cuando verifique su cuenta.</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <code className="min-w-0 flex-1 break-all rounded-lg bg-surface2 p-3 text-sm">{rewards.referralUrl}</code>
-                <button type="button" className="btn-primary" onClick={copyReferral}>Copiar enlace</button>
-              </div>
+        </div>
+        <div className="yui-hero-art" aria-label="Yui, mascota de YuiAPI">
+          <div className="yui-orbit yui-orbit-one" />
+          <div className="yui-orbit yui-orbit-two" />
+          <div className="yui-art-glow" />
+          <Mascot size={210} className="yui-mascot" title="Yui, personaje femenino de cabello rosa y moños lavanda" />
+          <span className="yui-art-tag">YUI // API</span>
+        </div>
+      </section>
+
+      <div className="yui-dashboard-layout">
+        <aside className="yui-side-nav" aria-label="Navegación del panel">
+          <p className="yui-side-label">ESPACIO PERSONAL</p>
+          <a className="yui-side-link is-active" href="#resumen"><span>◈</span> Resumen</a>
+          <a className="yui-side-link" href="#uso-api"><span>⌁</span> Uso de API</a>
+          <a className="yui-side-link" href="#mis-claves"><span>⌘</span> Mis API Keys</a>
+          <a className="yui-side-link" href="#recompensas"><span>✧</span> Recompensas</a>
+          <a className="yui-side-link" href="#actividad"><span>◷</span> Actividad</a>
+          <div className="yui-side-divider" />
+          <p className="yui-side-label">CUENTA</p>
+          <Link className="yui-side-link" href="/settings"><span>◎</span> Mi perfil</Link>
+          <Link className="yui-side-link" href="/docs"><span>▤</span> Documentación</Link>
+          <div className="yui-side-help">
+            <span className="yui-help-icon">?</span>
+            <strong>¿Necesitas ayuda?</strong>
+            <p>Consulta la guía para integrar YuiAPI en tus proyectos.</p>
+            <Link href="/docs">Abrir documentación ↗</Link>
+          </div>
+        </aside>
+
+        <div className="yui-dashboard-main">
+          <section id="resumen" className="yui-section-block">
+            <div className="yui-section-heading">
+              <div><span className="yui-kicker">VISTA GENERAL</span><h2>Tu resumen</h2></div>
+              <span className="yui-date-label">Datos de tu cuenta</span>
             </div>
+            <div className="yui-stat-grid">
+              <article className="yui-stat-card"><span className="yui-stat-icon cyan">⌁</span><p>Solicitudes utilizadas</p><strong>{quota ? quota.used.toLocaleString("es-PE") : "—"}</strong><small>En el periodo diario actual</small></article>
+              <article className="yui-stat-card"><span className="yui-stat-icon violet">◉</span><p>Solicitudes restantes</p><strong>{quota ? quota.remaining.toLocaleString("es-PE") : "—"}</strong><small>Se renuevan a medianoche de Lima</small></article>
+              <article className="yui-stat-card"><span className="yui-stat-icon pink">✧</span><p>Puntos acumulados</p><strong>{rewards ? rewards.points.toLocaleString("es-PE") : "—"}</strong><small>Participa y desbloquea recompensas</small></article>
+              <article className="yui-stat-card"><span className="yui-stat-icon blue">⌘</span><p>Claves activas</p><strong>{loaded ? keys.length : "—"}</strong><small>Máximo 5 claves por cuenta</small></article>
+            </div>
+          </section>
+
+          <section id="uso-api" className="yui-usage-panel">
+            <div className="yui-section-heading">
+              <div><span className="yui-kicker">CONSUMO</span><h2>Uso de tu API</h2></div>
+              {quota && <span className="yui-plan-pill">PLAN {quota.plan.toUpperCase()}</span>}
+            </div>
+            {quota ? <>
+              <div className="yui-usage-numbers"><div><strong>{quota.used.toLocaleString("es-PE")}</strong><span> utilizadas</span></div><div><strong>{quota.remaining.toLocaleString("es-PE")}</strong><span> disponibles</span></div></div>
+              <div className="yui-usage-track" role="progressbar" aria-valuemin={0} aria-valuemax={quota.limit} aria-valuenow={quota.used} aria-label="Solicitudes usadas hoy"><span style={{ width: `${usedPercent}%` }} /></div>
+              <div className="yui-usage-foot"><span>{usedPercent.toFixed(0)}% del límite diario utilizado</span><span>Límite: {quota.limit.toLocaleString("es-PE")}</span></div>
+            </> : <p className="text-muted">Cargando información de consumo…</p>}
+          </section>
+
+          {fresh && (
+            <section className="yui-key-reveal" role="alert">
+              <div><span className="yui-kicker">NUEVA CREDENCIAL</span><h2>Guarda tu API Key</h2><p>Por seguridad solo se muestra una vez. Si la pierdes, revócala y crea otra.</p></div>
+              <code>{fresh}</code>
+              <div className="flex flex-wrap gap-2"><button type="button" className="btn-primary" onClick={() => copy(fresh)}>Copiar clave</button><button type="button" className="btn-ghost" onClick={() => setFresh(null)}>Ya la guardé</button></div>
+            </section>
           )}
-          <div className="card">
-            <h2 className="font-bold">Insignias</h2>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {rewards.badges.map((badge) => <div key={badge.id} className={`rounded-xl border p-3 ${badge.unlocked ? "border-brand/50 bg-brand/5" : "border-line opacity-60"}`}><p className="font-semibold">{badge.unlocked ? "🏅 " : "🔒 "}{badge.label}</p><p className="text-xs text-muted">{badge.description}</p></div>)}
+
+          <section id="mis-claves" className="yui-section-block">
+            <div className="yui-section-heading">
+              <div><span className="yui-kicker">INTEGRACIONES</span><h2>Mis API Keys</h2><p>Credenciales para conectar tus bots, apps y proyectos.</p></div>
+              <span className="yui-count-pill">{keys.length}/5 claves</span>
             </div>
-          </div>
-          <div className="card">
-            <h2 className="font-bold">Ranking de puntos</h2>
-            {rewards.leaderboard.length ? <ol className="mt-3 space-y-2">{rewards.leaderboard.map((entry) => <li key={entry.username} className="flex items-center justify-between gap-3 text-sm"><span>{entry.rank}. {entry.displayName} <span className="text-muted">@{entry.username}</span></span><strong>{entry.points} pts</strong></li>)}</ol> : <p className="mt-2 text-sm text-muted">Aún no hay participantes.</p>}
-          </div>
-          <div className="card">
-            <h2 className="font-bold">Historial de puntos</h2>
-            {rewards.history.length ? <ul className="mt-3 space-y-2">{rewards.history.slice(0, 8).map((entry, index) => <li key={index} className="flex flex-wrap items-center justify-between gap-2 border-b border-line/60 py-2 text-sm last:border-0"><span>{entry.reason}</span><strong className="text-emerald-400">+{entry.amount} pts</strong></li>)}</ul> : <p className="mt-2 text-sm text-muted">Tus movimientos aparecerán aquí.</p>}
-          </div>
-        </section>
-      )}
+            <div className="yui-key-create">
+              <div><span className="yui-create-symbol">＋</span><div><strong>Crear una nueva clave</strong><p>Usa un nombre que te ayude a identificar tu proyecto.</p></div></div>
+              <form onSubmit={create} className="yui-create-form">
+                <label className="sr-only" htmlFor="keyname">Nombre de la clave</label>
+                <input id="keyname" className="input" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Mi bot de WhatsApp" required />
+                <button type="submit" className="btn-primary" disabled={busy || !name.trim() || keys.length >= 5}>{busy ? "Creando…" : "Crear API Key"}</button>
+              </form>
+              <p className="hint">Necesitas el correo verificado. Máximo 5 claves activas.</p>
+            </div>
+            {!loaded ? <p className="text-muted">Cargando tus claves…</p> : keys.length === 0 ? (
+              <div className="yui-empty-state"><span>⌘</span><strong>Aún no tienes API Keys</strong><p>Crea tu primera clave para conectar un proyecto con YuiAPI.</p></div>
+            ) : (
+              <ul className="yui-key-list">
+                {keys.map((k) => <li key={k.id} className="yui-key-item"><span className="yui-key-icon">⌘</span><div className="yui-key-info"><strong>{k.name}</strong><code>{k.prefix}••••••••</code><small>Creada {new Date(k.createdAt).toLocaleDateString("es-PE")} · {k.lastUsedAt ? `Último uso ${new Date(k.lastUsedAt).toLocaleString("es-PE")}` : "Todavía no utilizada"}</small></div><span className="yui-key-status">ACTIVA</span><button type="button" className="btn-danger" onClick={() => revoke(k)}>Revocar</button></li>)}
+              </ul>
+            )}
+          </section>
 
-      {quota && (
-        <section aria-label="Uso de hoy" className="card">
-          <p className="text-sm text-muted">Plan {quota.plan}</p>
-          <p className="text-3xl font-extrabold text-accent">
-            {quota.remaining} <span className="text-base font-normal text-muted">de {quota.limit} solicitudes restantes hoy</span>
-          </p>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface2" role="progressbar" aria-valuemin={0} aria-valuemax={quota.limit} aria-valuenow={quota.used} aria-label="Solicitudes usadas hoy">
-            <div className="h-full bg-brand" style={{ width: `${Math.min(100, (quota.used / quota.limit) * 100)}%` }} />
-          </div>
-          <p className="hint mt-2">Se renuevan a las 12 a. m. (hora de Lima).</p>
-        </section>
-      )}
+          {rewards && <section id="recompensas" className="yui-section-block">
+            <div className="yui-section-heading"><div><span className="yui-kicker">PROGRESO</span><h2>Recompensas y comunidad</h2><p>Tu actividad también suma dentro de YuiAPI.</p></div></div>
+            <div className="yui-reward-grid">
+              <article className="yui-reward-card"><span className="yui-stat-icon pink">✧</span><p>Tus puntos</p><strong>{rewards.points.toLocaleString("es-PE")}</strong></article>
+              <article className="yui-reward-card"><span className="yui-stat-icon violet">♧</span><p>Invitaciones verificadas</p><strong>{rewards.referrals}</strong></article>
+              <article className="yui-reward-card"><span className="yui-stat-icon cyan">↗</span><p>Racha diaria</p><strong>{rewards.daily.streak} días</strong></article>
+            </div>
+            <div className="yui-reward-action"><div><strong>Bonificación diaria</strong><p>Reclama tus puntos y aumenta tu racha cada día.</p></div><button type="button" className="btn-primary" disabled={rewardBusy || rewards.daily.claimed || !user?.emailVerified} onClick={claimDaily}>{rewards.daily.claimed ? "Ya reclamada hoy" : rewardBusy ? "Reclamando…" : `Reclamar +${rewards.daily.nextPoints} puntos`}</button></div>
+            {!user?.emailVerified && <p className="hint">Verifica tu correo para reclamar bonificaciones y participar en invitaciones.</p>}
+            {rewards.referralUrl && <div className="yui-referral"><div><strong>Invita amigos a YuiAPI</strong><p>Tú recibes 50 puntos y tu amigo 25 cuando verifique su cuenta.</p></div><code>{rewards.referralUrl}</code><button type="button" className="btn-ghost" onClick={copyReferral}>Copiar enlace</button></div>}
+            <div className="yui-reward-columns">
+              <div className="yui-subpanel"><h3>Insignias</h3><div className="mt-3 grid gap-2 sm:grid-cols-2">{rewards.badges.map((badge) => <div key={badge.id} className={`rounded-xl border p-3 ${badge.unlocked ? "border-brand/50 bg-brand/5" : "border-line opacity-60"}`}><p className="font-semibold">{badge.unlocked ? "🏅 " : "🔒 "}{badge.label}</p><p className="text-xs text-muted">{badge.description}</p></div>)}</div></div>
+              <div className="yui-subpanel"><h3>Ranking de puntos</h3>{rewards.leaderboard.length ? <ol className="mt-3 space-y-2">{rewards.leaderboard.map((entry) => <li key={entry.username} className="flex items-center justify-between gap-3 text-sm"><span>{entry.rank}. {entry.displayName} <span className="text-muted">@{entry.username}</span></span><strong>{entry.points} pts</strong></li>)}</ol> : <p className="mt-2 text-sm text-muted">Aún no hay participantes.</p>}</div>
+            </div>
+            <div className="yui-subpanel mt-4"><h3>Historial de puntos</h3>{rewards.history.length ? <ul className="mt-2 space-y-1">{rewards.history.slice(0, 8).map((entry, index) => <li key={index} className="flex flex-wrap items-center justify-between gap-2 border-b border-line/60 py-2 text-sm last:border-0"><span>{entry.reason}</span><strong className="text-emerald-400">+{entry.amount} pts</strong></li>)}</ul> : <p className="mt-2 text-sm text-muted">Tus movimientos aparecerán aquí.</p>}</div>
+          </section>}
 
-      {fresh && (
-        <section className="card border-accent/60" role="alert">
-          <h2 className="text-lg font-bold">Copia tu clave ahora</h2>
-          <p className="mt-1 text-sm text-muted">Por seguridad solo se muestra una vez. Si la pierdes, revócala y crea otra.</p>
-          <code className="mt-3 block break-all rounded-xl bg-surface2 p-3 text-sm">{fresh}</code>
-          <div className="mt-3 flex gap-2">
-            <button type="button" className="btn-primary" onClick={() => copy(fresh)}>
-              Copiar
-            </button>
-            <button type="button" className="btn-ghost" onClick={() => setFresh(null)}>
-              Ya la guardé
-            </button>
-          </div>
-        </section>
-      )}
-
-      <section aria-labelledby="nueva" className="card">
-        <h2 id="nueva" className="text-lg font-bold">
-          Crear clave
-        </h2>
-        <form onSubmit={create} className="mt-3 flex flex-wrap items-end gap-3">
-          <div className="min-w-[12rem] flex-1">
-            <label htmlFor="keyname" className="label">
-              Nombre
-            </label>
-            <input id="keyname" className="input" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} placeholder="Mi bot de WhatsApp" required />
-          </div>
-          <button type="submit" className="btn-primary" disabled={busy || !name.trim()}>
-            {busy ? "Creando…" : "Crear"}
-          </button>
-        </form>
-        <p className="hint mt-2">Máximo 5 claves. Necesitas el correo verificado.</p>
-      </section>
-
-      <section aria-labelledby="claves">
-        <h2 id="claves" className="mb-3 text-xl font-bold">
-          Mis claves
-        </h2>
-        {!loaded ? (
-          <p className="text-muted">Cargando…</p>
-        ) : keys.length === 0 ? (
-          <div className="card text-muted">Aún no tienes claves.</div>
-        ) : (
-          <ul className="space-y-3">
-            {keys.map((k) => (
-              <li key={k.id} className="card flex flex-wrap items-center justify-between gap-3 !p-4">
-                <div className="min-w-0">
-                  <p className="font-semibold">{k.name}</p>
-                  <p className="text-xs text-muted">
-                    <code>{k.prefix}…</code> · creada {new Date(k.createdAt).toLocaleDateString("es")} ·{" "}
-                    {k.lastUsedAt ? `último uso ${new Date(k.lastUsedAt).toLocaleString("es")}` : "sin usar"}
-                  </p>
-                </div>
-                <button type="button" className="btn-danger" onClick={() => revoke(k)}>
-                  Revocar
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+          <section id="actividad" className="yui-profile-strip">
+            <div className="flex items-center gap-3"><Avatar username={user?.username || "user"} name={user?.displayName || "Usuario"} v={user?.avatarV || 0} size={48} /><div><strong>{user?.displayName || user?.username}</strong><p>@{user?.username} · {user?.plan || "Free"}</p></div></div>
+            <Link href="/settings" className="btn-ghost">Configurar perfil ↗</Link>
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
 
 export default function DashboardPage() {
-  return (
-    <RequireAuth>
-      <DashboardInner />
-    </RequireAuth>
-  );
+  return <RequireAuth><DashboardInner /></RequireAuth>;
 }

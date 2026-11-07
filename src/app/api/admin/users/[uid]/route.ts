@@ -4,12 +4,12 @@ import { getUser, listUserActivity, updateAdminUser } from "@/server/users";
 export const runtime = "nodejs";
 
 export const GET = routeWith<{ uid: string }>(async ({ d, req }, { uid }) => {
-  await requireUser(d, req, { admin: true });
+  const { user: actor } = await requireUser(d, req, { admin: true });
   const user = await getUser(d, uid);
   if (!user) return json({ error: "Usuario no encontrado." }, 404);
   const { passHash: _secret, ...profile } = user;
   const activity = await listUserActivity(d, uid);
-  return json({ user: { ...profile, plan: user.plan ?? "free", status: user.status ?? "active", role: user.role ?? (d.adminEmails.includes(user.email) ? "admin" : "user"), dailyLimit: user.dailyLimit ?? null, minuteLimit: user.minuteLimit ?? null }, activity });
+  return json({ canManageRoles: d.adminEmails.includes(actor.email), user: { ...profile, plan: user.plan ?? "free", status: user.status ?? "active", role: user.role ?? (d.adminEmails.includes(user.email) ? "admin" : "user"), dailyLimit: user.dailyLimit ?? null, minuteLimit: user.minuteLimit ?? null }, activity });
 });
 
 export const PATCH = routeWith<{ uid: string }>(async ({ d, req }, { uid }) => {

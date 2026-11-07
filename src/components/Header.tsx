@@ -14,6 +14,7 @@ const links = [
   { href: "/docs", label: "Docs" },
   { href: "/ranking", label: "Ranking" },
   { href: "/dashboard", label: "Mi panel" },
+  { href: "/settings", label: "Mi perfil" },
 ];
 
 export function Header() {

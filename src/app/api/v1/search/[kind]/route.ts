@@ -1,11 +1,11 @@
 import { AppError } from "@/server/errors";
-import { cleanLimit, cleanQuery, searchAnime, searchBooks, searchMusic, searchOpenImages, searchWikipedia } from "@/server/external";
+import { cleanLimit, cleanQuery, searchAnime, searchBooks, searchMusic, searchOpenImages, searchWikipedia, searchShows, searchCharacters, searchCountries, searchPapers, searchEbooks } from "@/server/external";
 import { preflight, v1With } from "@/server/v1";
 
 export const runtime = "nodejs";
 export const OPTIONS = preflight;
 
-const KINDS = ["music", "anime", "wiki", "books", "images"] as const;
+const KINDS = ["music", "anime", "wiki", "books", "images", "shows", "characters", "countries", "papers", "ebooks"] as const;
 
 /** Búsqueda: /search/music | anime | wiki | books | images  con ?q= y ?limit= (wiki acepta ?lang=es). */
 export const GET = v1With<{ kind: string }>(async ({ url }, { kind }) => {

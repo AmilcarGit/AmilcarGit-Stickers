@@ -82,10 +82,31 @@ function DashboardInner() {
 
   async function copy(text: string) {
     try {
-      await navigator.clipboard.writeText(text);
-      toast("Copiado.", "ok");
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        throw new Error("Clipboard API no disponible");
+      }
+      toast("Clave copiada al portapapeles.", "ok");
     } catch {
-      toast("No se pudo copiar; selecciónala y cópiala a mano.", "info");
+      try {
+        const field = document.createElement("textarea");
+        field.value = text;
+        field.setAttribute("readonly", "");
+        field.style.position = "fixed";
+        field.style.opacity = "0";
+        field.style.pointerEvents = "none";
+        document.body.appendChild(field);
+        field.focus();
+        field.select();
+        field.setSelectionRange(0, field.value.length);
+        const copied = document.execCommand("copy");
+        document.body.removeChild(field);
+        if (!copied) throw new Error("No se pudo copiar");
+        toast("Clave copiada al portapapeles.", "ok");
+      } catch {
+        toast("No se pudo copiar automáticamente. Mantén pulsada la clave para copiarla.", "error");
+      }
     }
   }
 

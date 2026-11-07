@@ -106,13 +106,6 @@ export function Header() {
                 </Link>
               </li>
             ))}
-            {user && (
-              <li>
-                <Link href="/settings" className="block rounded-lg px-3 py-3 font-medium hover:bg-surface2">
-                  Mi cuenta
-                </Link>
-              </li>
-            )}
             {admin && (
               <li>
                 <Link href="/admin" className="block rounded-lg px-3 py-3 font-medium hover:bg-surface2">

@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RequireAdmin } from "@/components/Guards";
 import { useToast } from "@/components/Providers";
-import { createAdminKey, deleteAdminPlan, getAdminAudit, getAdminKeyUsage, getAdminUser, listAdminKeys, listAdminPlans, listUsers, revokeAdminKey, rotateAdminKey, saveAdminPlan, setUserPlan, updateAdminKey, updateAdminUser } from "@/lib/data";\nimport type { AdminPlan, ApiKeyInfo, ApiKeyUsage } from "@/lib/data";
+import { createAdminKey, deleteAdminPlan, getAdminAudit, getAdminKeyUsage, getAdminUser, listAdminKeys, listAdminPlans, listUsers, revokeAdminKey, rotateAdminKey, saveAdminPlan, setUserPlan, updateAdminKey, updateAdminUser } from "@/lib/data";
+import type { AdminPlan, ApiKeyInfo, ApiKeyUsage } from "@/lib/data";
 import type { UserRow } from "@/lib/types";
 
 function formatDate(value: number) {
@@ -30,7 +31,17 @@ function AdminInner() {
   const [role, setRole] = useState<"user" | "moderator">("user");
   const [canManageRoles, setCanManageRoles] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
-  const [audit, setAudit] = useState<{ at: number; actor: string; target: string; action: string; detail: string }[]>([]);\n  const [adminKeys, setAdminKeys] = useState<ApiKeyInfo[]>([]);\n  const [adminPlans, setAdminPlans] = useState<AdminPlan[]>([]);\n  const [newKeyName, setNewKeyName] = useState("");\n  const [revealedKey, setRevealedKey] = useState("");\n  const [planName, setPlanName] = useState("");\n  const [planDaily, setPlanDaily] = useState("500");\n  const [planMinute, setPlanMinute] = useState("60");\n  const [selectedPlan, setSelectedPlan] = useState("free");\n  const [planDays, setPlanDays] = useState("");\n  const [keyHistory, setKeyHistory] = useState<{ id: string; rows: ApiKeyUsage[] } | null>(null);
+  const [audit, setAudit] = useState<{ at: number; actor: string; target: string; action: string; detail: string }[]>([]);
+  const [adminKeys, setAdminKeys] = useState<ApiKeyInfo[]>([]);
+  const [adminPlans, setAdminPlans] = useState<AdminPlan[]>([]);
+  const [newKeyName, setNewKeyName] = useState("");
+  const [revealedKey, setRevealedKey] = useState("");
+  const [planName, setPlanName] = useState("");
+  const [planDaily, setPlanDaily] = useState("500");
+  const [planMinute, setPlanMinute] = useState("60");
+  const [selectedPlan, setSelectedPlan] = useState("free");
+  const [planDays, setPlanDays] = useState("");
+  const [keyHistory, setKeyHistory] = useState<{ id: string; rows: ApiKeyUsage[] } | null>(null);
 
   const loadUsers = useCallback(async (offset: number) => {
     try {
@@ -48,7 +59,8 @@ function AdminInner() {
 
   useEffect(() => {
     void loadUsers(0);
-    void getAdminAudit().then(setAudit).catch(() => undefined);\n    void listAdminPlans().then(setAdminPlans).catch(() => undefined);
+    void getAdminAudit().then(setAudit).catch(() => undefined);
+    void listAdminPlans().then(setAdminPlans).catch(() => undefined);
   }, [loadUsers]);
 
   async function refresh() {
@@ -89,7 +101,12 @@ function AdminInner() {
       setCanManageRoles(detail.canManageRoles);
       setDailyLimit(detail.user.dailyLimit == null ? "" : String(detail.user.dailyLimit));
       setMinuteLimit(detail.user.minuteLimit == null ? "" : String(detail.user.minuteLimit));
-      setRole(detail.user.role === "moderator" ? "moderator" : "user");\n      setSelectedPlan(detail.user.plan);\n      setPlanDays("");\n      setRevealedKey("");\n      setKeyHistory(null);\n      setAdminKeys(await listAdminKeys(u.uid));
+      setRole(detail.user.role === "moderator" ? "moderator" : "user");
+      setSelectedPlan(detail.user.plan);
+      setPlanDays("");
+      setRevealedKey("");
+      setKeyHistory(null);
+      setAdminKeys(await listAdminKeys(u.uid));
     } catch (err) {
       toast(err instanceof Error ? err.message : "No se pudo cargar el perfil.", "error");
     }
@@ -231,7 +248,8 @@ function AdminInner() {
     } catch (err) { toast(err instanceof Error ? err.message : "No se pudo eliminar; comprueba si está asignado.", "error"); }
   }
 
-\n  const filteredUsers = useMemo(() => {
+
+  const filteredUsers = useMemo(() => {
     const term = query.trim().toLocaleLowerCase("es");
     if (!term) return users;
     return users.filter((u) =>
@@ -462,12 +480,43 @@ function AdminInner() {
               <button type="button" onClick={() => void toggleSuspension()} disabled={savingProfile || selectedUser.role === "admin"} className="min-h-10 rounded-lg border border-rose-400/30 px-3 text-sm font-semibold text-rose-300 disabled:opacity-40">{selectedUser.status === "suspended" ? "Reactivar" : "Suspender"}</button>
             </div>
           </div>
+          <div className="mt-6 border-t border-line pt-5">
+            <h3 className="text-lg font-bold">API Keys del usuario</h3>
+            <p className="mt-1 text-sm text-muted">Los secretos solo se muestran al crearlos o rotarlos.</p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} placeholder="Nombre de la clave (ej. Bot WhatsApp)" maxLength={40} className="min-h-10 flex-1 rounded-lg border border-line bg-bg px-3 text-sm text-ink" />
+              <button type="button" onClick={() => void createKeyForSelectedUser()} className="rounded-lg bg-violet-500 px-4 py-2 text-sm font-semibold text-white">Crear clave</button>
+            </div>
+            {revealedKey && <div className="mt-3 rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-3"><p className="text-xs font-semibold text-emerald-300">Secreto nuevo — cópialo ahora</p><code className="mt-2 block break-all text-sm text-ink">{revealedKey}</code><button type="button" onClick={() => { void navigator.clipboard?.writeText(revealedKey); toast("Clave copiada.", "ok"); }} className="mt-2 rounded-lg border border-emerald-400/30 px-3 py-1.5 text-xs font-semibold text-emerald-200">Copiar clave</button></div>}
+            {adminKeys.length ? <div className="mt-3 space-y-2">{adminKeys.map((key) => <div key={key.id} className="rounded-xl border border-line bg-bg/50 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-semibold">{key.name}</p><p className="text-xs text-muted">{key.prefix}… · Último uso: {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString("es-PE") : "Nunca"}</p><p className="text-xs text-muted">Límites: {key.dailyLimit ?? "usuario"}/día · {key.minuteLimit ?? "usuario"}/min</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => void showKeyHistory(key.id)} className="rounded-lg border border-line px-2.5 py-1.5 text-xs">Uso</button><button type="button" onClick={() => void editKeyLimits(key)} className="rounded-lg border border-line px-2.5 py-1.5 text-xs">Límites</button><button type="button" onClick={() => void rotateKey(key.id)} className="rounded-lg border border-amber-400/30 px-2.5 py-1.5 text-xs text-amber-300">Rotar</button><button type="button" onClick={() => void revokeKey(key.id)} className="rounded-lg border border-rose-400/30 px-2.5 py-1.5 text-xs text-rose-300">Revocar</button></div></div>{keyHistory?.id === key.id && <div className="mt-2 border-t border-line pt-2 text-xs text-muted">{keyHistory.rows.length ? keyHistory.rows.map((row) => <p key={row.day}>{row.day}: {row.requests.toLocaleString("es-PE")} solicitudes</p>) : "Sin historial de uso registrado todavía."}</div>}</div>)}</div> : <p className="mt-3 text-sm text-muted">Este usuario todavía no tiene claves.</p>}
+          </div>
+          <div className="mt-6 border-t border-line pt-5">
+            <h3 className="text-lg font-bold">Plan y acceso temporal</h3>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <label className="text-sm text-muted">Plan<select value={selectedPlan} onChange={(e) => setSelectedPlan(e.target.value)} className="mt-1 min-h-10 w-full rounded-lg border border-line bg-bg px-3 text-ink">{adminPlans.map((plan) => <option key={plan.id} value={plan.id}>{plan.label} · {plan.perDay.toLocaleString("es-PE")}/día</option>)}</select></label>
+              <label className="text-sm text-muted">Duración en días (vacío = permanente)<input value={planDays} onChange={(e) => setPlanDays(e.target.value)} inputMode="numeric" placeholder="Permanente" className="mt-1 min-h-10 w-full rounded-lg border border-line bg-bg px-3 text-ink" /></label>
+              <div className="flex items-end"><button type="button" onClick={() => void assignSelectedPlan()} className="min-h-10 w-full rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white">Asignar plan</button></div>
+            </div>
+            {selectedUser.planExpiresAt && <p className="mt-2 text-xs text-muted">Acceso actual vence: {new Date(selectedUser.planExpiresAt).toLocaleString("es-PE")}</p>}
+          </div>
           <div className="mt-5 border-t border-line pt-4">
             <h3 className="font-semibold">Historial de actividad</h3>
             {activity.length ? <ul className="mt-3 space-y-2">{activity.map((item, i) => <li key={i} className="flex flex-col gap-1 rounded-lg bg-bg/60 p-3 text-sm sm:flex-row sm:items-center sm:justify-between"><span>{item.detail}</span><span className="text-xs text-muted">{item.type} · {new Date(item.at).toLocaleString("es-PE")}</span></li>)}</ul> : <p className="mt-2 text-sm text-muted">Todavía no hay actividad registrada para esta cuenta.</p>}
           </div>
         </section>
       )}
+
+      <section className="rounded-2xl border border-violet-400/20 bg-surface/80 p-4 sm:p-5">
+        <h2 className="text-lg font-bold">Planes personalizados</h2>
+        <p className="mt-1 text-sm text-muted">Define límites que se aplicarán realmente al autenticar cada solicitud.</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-4">
+          <input value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="Nombre del plan" maxLength={32} className="min-h-10 rounded-lg border border-line bg-bg px-3 text-sm text-ink" />
+          <input value={planDaily} onChange={(e) => setPlanDaily(e.target.value)} inputMode="numeric" placeholder="Solicitudes/día" className="min-h-10 rounded-lg border border-line bg-bg px-3 text-sm text-ink" />
+          <input value={planMinute} onChange={(e) => setPlanMinute(e.target.value)} inputMode="numeric" placeholder="Solicitudes/min" className="min-h-10 rounded-lg border border-line bg-bg px-3 text-sm text-ink" />
+          <button type="button" onClick={() => void createCustomPlan()} className="min-h-10 rounded-lg bg-violet-500 px-4 text-sm font-semibold text-white">Crear plan</button>
+        </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{adminPlans.map((plan) => <div key={plan.id} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-bg/50 p-3"><div><p className="font-semibold">{plan.label}</p><p className="text-xs text-muted">{plan.perDay.toLocaleString("es-PE")} al día · {plan.perMinute.toLocaleString("es-PE")} por minuto</p></div>{plan.id.startsWith("custom_") && <button type="button" onClick={() => void removeCustomPlan(plan.id)} className="text-xs font-semibold text-rose-300">Eliminar</button>}</div>)}</div>
+      </section>
 
       <section className="rounded-2xl border border-line bg-surface/80 p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">

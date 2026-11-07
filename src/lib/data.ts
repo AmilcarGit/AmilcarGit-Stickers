@@ -141,3 +141,29 @@ export async function deleteAvatar(): Promise<MeInfo> {
 export async function fetchRanking(): Promise<{ month: string; entries: RankingEntry[] }> {
   return api("/api/ranking");
 }
+
+
+/* ------------------------- Puntos y recompensas ------------------------- */
+
+export type RewardsData = {
+  points: number;
+  referrals: number;
+  referralCode: string | null;
+  referralUrl: string | null;
+  daily: { claimed: boolean; streak: number; nextPoints: number };
+  badges: { id: string; label: string; description: string; unlocked: boolean }[];
+  history: { at: number; amount: number; reason: string; balance?: number }[];
+  leaderboard: { rank: number; username: string; displayName: string; points: number }[];
+};
+
+export async function fetchRewards(): Promise<RewardsData> {
+  return api("/api/rewards");
+}
+
+export async function claimDailyReward(): Promise<{ bonus: { points: number; streak: number; balance: number }; rewards: RewardsData }> {
+  return api("/api/rewards/daily", { method: "POST" });
+}
+
+export async function giftUserPlan(uid: string, plan: "pro" | "ultra", days: number): Promise<{ plan: string; planExpiresAt: number }> {
+  return api(`/api/admin/users/${encodeURIComponent(uid)}/gift`, { method: "POST", body: { plan, days } });
+}

@@ -1,9 +1,12 @@
+export type AdminBadge = { id: string; label: string; icon: string; color: "gold" | "blue" | "purple" | "pink" | "green" | "rainbow"; reason?: string; awardedAt: number; awardedBy: string };
+
 /** Lo que ve la propia persona de su cuenta. */
 export type MeInfo = {
   uid: string;
   username: string;
   displayName: string;
   verifiedBadge?: "blue" | "gold" | null;
+  adminBadges?: AdminBadge[];
   createdAt: number; // ms
   planExpiresAt?: number | null;
   email: string;
@@ -31,8 +34,9 @@ export type UserRow = {
   minuteLimit: number | null;
   role: "user" | "moderator" | "admin";
   verifiedBadge?: "blue" | "gold" | null;
+  adminBadges?: AdminBadge[];
   planExpiresAt?: number | null;
 };
 
 /** Una fila del ranking público de uso mensual. */
-export type RankingEntry = { rank: number; username: string; displayName: string; verifiedBadge?: "blue" | "gold" | null; count: number; avatarV: number };
+export type RankingEntry = { rank: number; username: string; displayName: string; verifiedBadge?: "blue" | "gold" | null; adminBadges?: AdminBadge[]; count: number; avatarV: number };

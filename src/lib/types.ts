@@ -19,4 +19,8 @@ export type UserRow = {
   emailVerified: boolean;
   plan: "free" | "pro" | "ultra";
   createdAt: number;
+  status: "active" | "suspended";
+  dailyLimit: number | null;
+  minuteLimit: number | null;
+  role: "user" | "moderator" | "admin";
 };

@@ -41,7 +41,7 @@ export async function resetPassword(token: string, password: string): Promise<vo
   await api("/api/auth/reset", { method: "POST", body: { token, password } });
 }
 
-export async function saveProfile(patch: { displayName?: string; showInRanking?: boolean }): Promise<MeInfo> {
+export async function saveProfile(patch: { displayName?: string; bio?: string; location?: string; showInRanking?: boolean }): Promise<MeInfo> {
   return (await api<{ me: MeInfo }>("/api/me/profile", { method: "PATCH", body: patch })).me;
 }
 

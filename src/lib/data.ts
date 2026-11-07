@@ -157,7 +157,7 @@ export type RewardsData = {
   daily: { claimed: boolean; streak: number; nextPoints: number };
   badges: { id: string; label: string; description: string; unlocked: boolean }[];
   history: { at: number; amount: number; reason: string; balance?: number }[];
-  leaderboard: { rank: number; username: string; displayName: string; points: number }[];
+  leaderboard: { rank: number; username: string; displayName: string; verifiedBadge?: "blue" | "gold" | null; points: number }[];
 };
 
 export async function fetchRewards(): Promise<RewardsData> {

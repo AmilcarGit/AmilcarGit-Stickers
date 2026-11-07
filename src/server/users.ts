@@ -14,6 +14,7 @@ export type UserRecord = {
   email: string;
   username: string;
   displayName: string;
+  verifiedBadge?: "blue" | "gold" | null;
   createdAt: number;
   passHash: string;
   emailVerified: boolean;
@@ -41,7 +42,7 @@ const lc = (s: string) => s.trim().toLowerCase();
 export const isAdmin = (d: Deps, u: UserRecord): boolean => u.emailVerified && (d.adminEmails.includes(u.email) || u.role === "moderator");
 
 export function toMe(d: Deps, u: UserRecord): MeInfo {
-  return { uid: u.uid, username: u.username, displayName: u.displayName, createdAt: u.createdAt, email: u.email, emailVerified: u.emailVerified, admin: isAdmin(d, u), plan: u.planExpiresAt && u.planExpiresAt <= Date.now() ? "free" : u.plan ?? "free", planExpiresAt: u.planExpiresAt ?? null, avatarV: u.avatarV ?? 0, showInRanking: u.showInRanking !== false, bio: u.bio ?? "", location: u.location ?? "" };
+  return { uid: u.uid, username: u.username, displayName: u.displayName, verifiedBadge: u.verifiedBadge ?? null, createdAt: u.createdAt, email: u.email, emailVerified: u.emailVerified, admin: isAdmin(d, u), plan: u.planExpiresAt && u.planExpiresAt <= Date.now() ? "free" : u.plan ?? "free", planExpiresAt: u.planExpiresAt ?? null, avatarV: u.avatarV ?? 0, showInRanking: u.showInRanking !== false, bio: u.bio ?? "", location: u.location ?? "" };
 }
 
 export async function getUser(d: Deps, uid: string): Promise<UserRecord | null> {
@@ -200,6 +201,7 @@ export async function listUsers(d: Deps, offset: number, limit: number): Promise
       uid: u.uid,
       username: u.username,
       displayName: u.displayName,
+      verifiedBadge: u.verifiedBadge ?? null,
       email: u.email,
       emailVerified: u.emailVerified,
       plan: u.planExpiresAt && u.planExpiresAt <= Date.now() ? "free" : u.plan ?? "free",
@@ -265,6 +267,11 @@ export async function updateAdminUser(d: Deps, actor: UserRecord, uid: string, p
   if (patch.displayName !== undefined) {
     if (typeof patch.displayName !== "string" || !patch.displayName.trim() || patch.displayName.length > 60) throw new AppError(400, "El nombre debe tener entre 1 y 60 caracteres.");
     next.displayName = patch.displayName.trim();
+  }
+  if (patch.verifiedBadge !== undefined) {
+    if (!d.adminEmails.includes(actor.email)) throw new AppError(403, "Solo el administrador principal puede asignar insignias de verificación.");
+    if (patch.verifiedBadge !== null && patch.verifiedBadge !== "blue" && patch.verifiedBadge !== "gold") throw new AppError(400, "Insignia de verificación no válida.");
+    next.verifiedBadge = patch.verifiedBadge as "blue" | "gold" | null;
   }
   await d.store.set(`user:${uid}`, next);
   const changed = Object.keys(patch).join(", ");

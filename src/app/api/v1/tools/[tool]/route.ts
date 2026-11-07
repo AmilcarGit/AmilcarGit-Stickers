@@ -33,7 +33,7 @@ function download(bytes: Uint8Array, type: string, filename: string): Response {
   return new Response(bytes as unknown as BodyInit, {
     headers: {
       "content-type": type,
-      "content-disposition": \`attachment; filename="\${filename}"\`,
+      "content-disposition": `attachment; filename="${filename}"`,
       "x-file-name": filename,
     },
   });
@@ -68,12 +68,12 @@ export const GET = v1With<{ tool: string }>(async ({ url }, { tool }) => {
       try { return { result: decodeURIComponent(textParam(sp.get("text"))) }; }
       catch { throw new AppError(400, "La cadena no contiene una URL codificada válida."); }
     }
-    default: throw new AppError(404, \`Herramienta desconocida. Usa: \${TOOLS.join(", ")}.\`);
+    default: throw new AppError(404, `Herramienta desconocida. Usa: ${TOOLS.join(", ")}.`);
   }
 });
 
 export const POST = v1With<{ tool: string }>(async ({ req, url }, { tool }) => {
-  if (!(TOOLS as readonly string[]).includes(tool)) throw new AppError(404, \`Herramienta desconocida. Usa: \${TOOLS.join(", ")}.\`);
+  if (!(TOOLS as readonly string[]).includes(tool)) throw new AppError(404, `Herramienta desconocida. Usa: ${TOOLS.join(", ")}.`);
   const bytes = await readUpload(req, tool === "file-base64" ? 2 * 1024 * 1024 : MAX_UPLOAD);
   const contentType = req.headers.get("content-type") ?? "application/octet-stream";
   const requestedName = req.headers.get("x-file-name") ?? "archivo";
@@ -122,5 +122,5 @@ export const POST = v1With<{ tool: string }>(async ({ req, url }, { tool }) => {
   let output: Buffer;
   try { output = await pipeline.toBuffer(); } catch { throw new AppError(400, "No se pudo procesar la imagen."); }
   const extension = format === "jpeg" ? "jpg" : format;
-  return download(new Uint8Array(output), \`image/\${format === "jpeg" ? "jpeg" : format}\`, \`\${filename}-yuiapi.\${extension}\`);
+  return download(new Uint8Array(output), `image/${format === "jpeg" ? "jpeg" : format}`, `${filename}-yuiapi.${extension}`);
 });

@@ -69,12 +69,12 @@ export async function effectivePlan(d: Deps, user: UserRecord, nowMs = Date.now(
   return { id, config };
 }
 
-async function createKeyForUser(d: Deps, user: UserRecord, rawName: unknown, allowUnverified: boolean, nowMs = Date.now()): Promise<{ key: string; info: KeyInfo }> {
+async function createKeyForUser(d: Deps, user: UserRecord, rawName: unknown, allowUnverified: boolean, nowMs = Date.now(), skipMax = false): Promise<{ key: string; info: KeyInfo }> {
   if (!allowUnverified && !user.emailVerified) throw new AppError(403, "Verifica tu correo electrónico antes de crear claves de API.");
   if (user.status === "suspended") throw new AppError(403, "No puedes crear claves para una cuenta suspendida.");
   const name = typeof rawName === "string" ? rawName.trim().slice(0, 40) : "";
   if (!name) throw new AppError(400, "Ponle un nombre a la clave (por ejemplo, «Mi bot»).");
-  if ((await d.store.zcard(`apikeys:${user.uid}`)) >= MAX_KEYS_PER_USER) throw new AppError(403, `Llegaste al máximo de ${MAX_KEYS_PER_USER} claves. Revoca alguna para crear otra.`);
+  if (!skipMax && (await d.store.zcard(`apikeys:${user.uid}`)) >= MAX_KEYS_PER_USER) throw new AppError(403, `Llegaste al máximo de ${MAX_KEYS_PER_USER} claves. Revoca alguna para crear otra.`);
   const key = KEY_PREFIX + randomBytes(24).toString("base64url");
   const hash = hashOf(key);
   const rec: KeyRecord = { id: hash.slice(0, 16), uid: user.uid, name, prefix: key.slice(0, 8), createdAt: nowMs, lastUsedAt: 0, dailyLimit: null, minuteLimit: null };
@@ -124,7 +124,9 @@ export async function updateApiKeyLimits(d: Deps, uid: string, id: string, patch
 }
 export async function rotateApiKey(d: Deps, uid: string, id: string): Promise<{ key: string; info: KeyInfo }> {
   const { rec } = await findKey(d, uid, id);
-  const created = await createAdminApiKey(d, uid, rec.name);
+  const user = await getUser(d, uid);
+  if (!user) throw new AppError(404, "Usuario no encontrado.");
+  const created = await createKeyForUser(d, user, rec.name, true, Date.now(), true);
   try { await revokeApiKey(d, uid, id); }
   catch (error) { await revokeApiKey(d, uid, created.info.id); throw error; }
   return created;

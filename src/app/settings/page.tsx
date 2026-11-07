@@ -172,7 +172,8 @@ function ProfileInner() {
         <div className="card"><p className="text-sm text-muted">Puntos acumulados</p><p className="mt-1 text-2xl font-extrabold text-accent">{points.toLocaleString("es-PE")}</p></div>
         <div className="card"><p className="text-sm text-muted">Invitaciones verificadas</p><p className="mt-1 text-2xl font-extrabold">{rewards?.referrals ?? "—"}</p></div>
         <div className="card"><p className="text-sm text-muted">Racha diaria</p><p className="mt-1 text-2xl font-extrabold">{rewards ? rewards.daily.streak + " días" : "—"}</p></div>
-        <div className="card"><p className="text-sm text-muted">Solicitudes este mes</p><p className="mt-1 text-2xl font-extrabold">{requestsThisMonth === null ? "…" : requestsThisMonth.toLocaleString("es-PE")}</p></div>\n        <div className="card"><p className="text-sm text-muted">Claves API activas</p><p className="mt-1 text-2xl font-extrabold">{dataBusy ? "…" : keys.length}</p></div>
+        <div className="card"><p className="text-sm text-muted">Solicitudes este mes</p><p className="mt-1 text-2xl font-extrabold">{requestsThisMonth === null ? "…" : requestsThisMonth.toLocaleString("es-PE")}</p></div>
+        <div className="card"><p className="text-sm text-muted">Claves API activas</p><p className="mt-1 text-2xl font-extrabold">{dataBusy ? "…" : keys.length}</p></div>
       </div>
 
       <section className="card space-y-4">

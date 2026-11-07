@@ -1,5 +1,5 @@
 import { api } from "./api";
-import type { MeInfo, RankingEntry, UserRow } from "./types";
+import type { AdminBadge, MeInfo, RankingEntry, UserRow } from "./types";
 import { normalizeUsername } from "./validators";
 
 /* ------------------------------ Cuenta ------------------------------ */
@@ -82,7 +82,7 @@ export async function getAdminUser(uid: string): Promise<AdminUserDetail> {
   return api(`/api/admin/users/${encodeURIComponent(uid)}`);
 }
 
-export async function updateAdminUser(uid: string, patch: { status?: "active" | "suspended"; dailyLimit?: number | null; minuteLimit?: number | null; role?: "user" | "moderator"; displayName?: string; verifiedBadge?: "blue" | "gold" | null }): Promise<UserRow> {
+export async function updateAdminUser(uid: string, patch: { status?: "active" | "suspended"; dailyLimit?: number | null; minuteLimit?: number | null; role?: "user" | "moderator"; displayName?: string; verifiedBadge?: "blue" | "gold" | null; adminBadges?: AdminBadge[] }): Promise<UserRow> {
   const result = await api<{ user: UserRow }>(`/api/admin/users/${encodeURIComponent(uid)}`, { method: "PATCH", body: patch });
   return result.user;
 }

@@ -6,6 +6,7 @@ import { RequireAuth, VerifyBanner } from "@/components/Guards";
 import { useAuth, useToast } from "@/components/Providers";
 import { Avatar } from "@/components/Avatar";
 import { VerifiedName } from "@/components/VerifiedName";
+import { AdminBadges } from "@/components/AdminBadges";
 import { deleteAvatar, fetchMyStats, fetchRewards, listApiKeys, saveProfile, uploadAvatar, type ApiKeyInfo, type ApiQuota, type RewardsData } from "@/lib/data";
 
 const LEVELS = [
@@ -127,6 +128,7 @@ function ProfileInner() {
         <div className="yui-profile-hero-user">
           <div className="yui-profile-avatar-ring"><Avatar username={user.username} name={user.displayName} v={user.avatarV} size={104} /></div>
           <strong><VerifiedName name={user.displayName} badge={user.verifiedBadge} /></strong>
+          <AdminBadges badges={user.adminBadges} />
           <span>{user.admin ? "Administradora" : "Miembro YuiAPI"}</span>
           <b>{level.name}</b>
         </div>
@@ -182,6 +184,7 @@ function ProfileInner() {
           <section id="perfil-logros" className="yui-section-block">
             <div className="yui-section-heading"><div><span className="yui-kicker">RECONOCIMIENTOS</span><h2>Logros e historial</h2><p>Insignias desbloqueadas y movimientos recientes de puntos.</p></div><Link href="/dashboard#recompensas" className="yui-inline-link">Ver recompensas ↗</Link></div>
             {rewards ? <>
+              {user.adminBadges?.length ? <div className="yui-subpanel mb-4"><h3>Insignias especiales del equipo</h3><p className="mt-1 text-xs text-muted">Reconocimientos asignados directamente por la administración.</p><div className="mt-3 flex flex-wrap gap-2"><AdminBadges badges={user.adminBadges} /></div></div> : <div className="yui-subpanel mb-4"><h3>Insignias especiales</h3><p className="mt-1 text-sm text-muted">Aquí aparecerán los reconocimientos especiales que te entregue el equipo de YuiAPI.</p></div>}
               <div className="yui-badge-grid">{rewards.badges.map((badge) => <article key={badge.id} className={"yui-badge-card " + (badge.unlocked ? "is-unlocked" : "is-locked")}><span>{badge.unlocked ? "🏅" : "🔒"}</span><div><strong>{badge.label}</strong><p>{badge.description}</p></div><small>{badge.unlocked ? "DESBLOQUEADA" : "BLOQUEADA"}</small></article>)}</div>
               <div className="yui-subpanel mt-4"><h3>Historial de puntos</h3>{rewards.history.length ? <ul className="mt-2">{rewards.history.slice(0, 8).map((entry, index) => <li key={entry.at + "-" + index} className="yui-points-row"><div><strong>{entry.reason}</strong><small>{new Date(entry.at).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" })}</small></div><b>+{entry.amount} pts</b></li>)}</ul> : <p className="mt-2 text-sm text-muted">Tus movimientos aparecerán aquí.</p>}</div>
             </> : <p className="text-sm text-muted">{dataBusy ? "Cargando logros…" : "No se pudieron cargar tus logros en este momento."}</p>}

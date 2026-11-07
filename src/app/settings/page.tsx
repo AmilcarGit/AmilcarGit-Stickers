@@ -5,7 +5,7 @@ import Link from "next/link";
 import { RequireAuth, VerifyBanner } from "@/components/Guards";
 import { useAuth, useToast } from "@/components/Providers";
 import { Avatar } from "@/components/Avatar";
-import { deleteAvatar, fetchRewards, listApiKeys, saveProfile, uploadAvatar, type ApiKeyInfo, type ApiQuota, type RewardsData } from "@/lib/data";
+import { deleteAvatar, fetchMyStats, fetchRewards, listApiKeys, saveProfile, uploadAvatar, type ApiKeyInfo, type ApiQuota, type RewardsData } from "@/lib/data";
 
 const LEVELS = [
   { name: "Principiante", min: 0, next: 100 },
@@ -35,6 +35,7 @@ function ProfileInner() {
   const [quota, setQuota] = useState<ApiQuota | null>(null);
   const [rewards, setRewards] = useState<RewardsData | null>(null);
   const [dataBusy, setDataBusy] = useState(true);
+  const [requestsThisMonth, setRequestsThisMonth] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -46,7 +47,7 @@ function ProfileInner() {
   useEffect(() => {
     let active = true;
     setDataBusy(true);
-    void Promise.allSettled([listApiKeys(), fetchRewards()]).then(([keyResult, rewardResult]) => {
+    void Promise.allSettled([listApiKeys(), fetchRewards(), fetchMyStats()]).then(([keyResult, rewardResult, statsResult]) => {
       if (!active) return;
       if (keyResult.status === "fulfilled") {
         setKeys(keyResult.value.keys);
@@ -165,11 +166,11 @@ function ProfileInner() {
         </div>
       </section>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="card"><p className="text-sm text-muted">Puntos acumulados</p><p className="mt-1 text-2xl font-extrabold text-accent">{points.toLocaleString("es-PE")}</p></div>
         <div className="card"><p className="text-sm text-muted">Invitaciones verificadas</p><p className="mt-1 text-2xl font-extrabold">{rewards?.referrals ?? "—"}</p></div>
         <div className="card"><p className="text-sm text-muted">Racha diaria</p><p className="mt-1 text-2xl font-extrabold">{rewards ? rewards.daily.streak + " días" : "—"}</p></div>
-        <div className="card"><p className="text-sm text-muted">Claves API activas</p><p className="mt-1 text-2xl font-extrabold">{dataBusy ? "…" : keys.length}</p></div>
+        <div className="card"><p className="text-sm text-muted">Solicitudes este mes</p><p className="mt-1 text-2xl font-extrabold">{requestsThisMonth === null ? "…" : requestsThisMonth.toLocaleString("es-PE")}</p></div>\n        <div className="card"><p className="text-sm text-muted">Claves API activas</p><p className="mt-1 text-2xl font-extrabold">{dataBusy ? "…" : keys.length}</p></div>
       </div>
 
       <section className="card space-y-4">

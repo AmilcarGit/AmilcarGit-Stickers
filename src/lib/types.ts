@@ -3,7 +3,8 @@ export type MeInfo = {
   uid: string;
   username: string;
   displayName: string;
-  createdAt: number; // ms\n  planExpiresAt?: number | null;
+  createdAt: number; // ms
+  planExpiresAt?: number | null;
   email: string;
   emailVerified: boolean;
   admin: boolean;
@@ -22,5 +23,6 @@ export type UserRow = {
   status: "active" | "suspended";
   dailyLimit: number | null;
   minuteLimit: number | null;
-  role: "user" | "moderator" | "admin";\n  planExpiresAt?: number | null;
+  role: "user" | "moderator" | "admin";
+  planExpiresAt?: number | null;
 };

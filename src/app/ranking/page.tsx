@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { VerifiedName } from "@/components/VerifiedName";
+import { AdminBadges } from "@/components/AdminBadges";
 import { fetchRanking } from "@/lib/data";
 import type { RankingEntry } from "@/lib/types";
 
@@ -54,6 +55,7 @@ export default function RankingPage() {
               <Avatar username={e.username} name={e.displayName} v={e.avatarV} size={44} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold"><VerifiedName name={e.displayName} badge={e.verifiedBadge} /></p>
+                <AdminBadges badges={e.adminBadges} compact />
                 <p className="truncate text-sm text-muted">@{e.username}</p>
               </div>
               <p className="text-right text-sm">

@@ -29,7 +29,8 @@ function AdminInner() {
   const [minuteLimit, setMinuteLimit] = useState("");
   const [role, setRole] = useState<"user" | "moderator">("user");
   const [canManageRoles, setCanManageRoles] = useState(false);
-  const [savingProfile, setSavingProfile] = useState(false);\n  const [audit, setAudit] = useState<{ at: number; actor: string; target: string; action: string; detail: string }[]>([]);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [audit, setAudit] = useState<{ at: number; actor: string; target: string; action: string; detail: string }[]>([]);
 
   const loadUsers = useCallback(async (offset: number) => {
     try {
@@ -47,6 +48,7 @@ function AdminInner() {
 
   useEffect(() => {
     void loadUsers(0);
+    void getAdminAudit().then(setAudit).catch(() => undefined);
   }, [loadUsers]);
 
   async function refresh() {

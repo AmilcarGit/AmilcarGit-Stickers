@@ -17,7 +17,8 @@ export type UserRecord = {
   passHash: string;
   emailVerified: boolean;
   /** Plan de la API (por defecto «free»). Solo lo cambia un moderador. */
-  plan?: string;\n  planExpiresAt?: number | null;
+  plan?: string;
+  planExpiresAt?: number | null;
   status?: "active" | "suspended";
   dailyLimit?: number | null;
   minuteLimit?: number | null;
@@ -185,7 +186,8 @@ export async function listUsers(d: Deps, offset: number, limit: number): Promise
       displayName: u.displayName,
       email: u.email,
       emailVerified: u.emailVerified,
-      plan: u.planExpiresAt && u.planExpiresAt <= Date.now() ? "free" : u.plan ?? "free",\n      planExpiresAt: u.planExpiresAt ?? null,
+      plan: u.planExpiresAt && u.planExpiresAt <= Date.now() ? "free" : u.plan ?? "free",
+      planExpiresAt: u.planExpiresAt ?? null,
       createdAt: u.createdAt,
       status: u.status ?? "active",
       dailyLimit: u.dailyLimit ?? null,

@@ -26,6 +26,11 @@ export const ENDPOINTS: Endpoint[] = [
   { id: "wiki", group: "Búsqueda", method: "GET", path: "/api/v1/search/wiki", what: "Artículos de Wikipedia con resumen.", params: [q("Machu Picchu"), { name: "lang", label: "Idioma", example: "es" }, limit], returns: "json" },
   { id: "books", group: "Búsqueda", method: "GET", path: "/api/v1/search/books", what: "Busca libros en Open Library.", params: [q("Cien años de soledad"), limit], returns: "json" },
   { id: "images", group: "Búsqueda", method: "GET", path: "/api/v1/search/images", what: "Busca imágenes con licencia abierta en Openverse; devuelve autor y licencia.", params: [q("sakura"), limit], returns: "json" },
+  { id: "shows", group: "Búsqueda", method: "GET", path: "/api/v1/search/shows", what: "Busca series y programas en TVmaze; API pública gratuita, con atribución CC BY-SA.", params: [q("Breaking Bad"), limit], returns: "json" },
+  { id: "characters", group: "Búsqueda", method: "GET", path: "/api/v1/search/characters", what: "Busca personajes de Rick and Morty; API pública sin clave.", params: [q("Rick"), limit], returns: "json" },
+  { id: "countries", group: "Búsqueda", method: "GET", path: "/api/v1/search/countries", what: "Busca países y devuelve capital, región, población, bandera, idiomas y monedas.", params: [q("Peru"), limit], returns: "json" },
+  { id: "papers", group: "Búsqueda", method: "GET", path: "/api/v1/search/papers", what: "Busca artículos y publicaciones científicas en Crossref; sin registro ni API key.", params: [q("machine learning"), limit], returns: "json" },
+  { id: "ebooks", group: "Búsqueda", method: "GET", path: "/api/v1/search/ebooks", what: "Busca libros electrónicos de dominio público en Gutendex / Project Gutenberg.", params: [q("Sherlock Holmes"), limit], returns: "json" },
 
   upload("file-info", "Descargas y archivos", "file-info", "Analiza un archivo local: nombre, tamaño, MIME y metadatos básicos de imagen."),
   upload("file-base64", "Descargas y archivos", "file-base64", "Convierte un archivo adjunto a Base64 y devuelve sus metadatos."),

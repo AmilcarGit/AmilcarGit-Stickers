@@ -97,6 +97,7 @@ export async function optionalUser(d: Deps, req: Request): Promise<Authed | null
 export async function requireUser(d: Deps, req: Request, opts: { verified?: boolean; admin?: boolean } = {}): Promise<Authed> {
   const a = await optionalUser(d, req);
   if (!a) throw new AppError(401, "Inicia sesión para continuar.");
+  if (a.user.status === "suspended") throw new AppError(403, "Tu cuenta está suspendida. Contacta con soporte.");
   if (opts.admin && !a.admin) throw new AppError(403, "No tienes permiso para esto.");
   if (opts.verified && !a.user.emailVerified) throw new AppError(403, "Verifica tu correo electrónico antes de continuar.");
   return a;

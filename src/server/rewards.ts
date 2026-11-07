@@ -90,7 +90,7 @@ export async function getRewards(d: Deps, uid: string, now = Date.now()) {
   const resolved = rankIds.flatMap((id, i) => {
     const u = boardUsers[i];
     if (!u || u.showInRanking === false) return [];
-    return [{ rank: 0, username: u.username, displayName: u.displayName, points: pointValues[i] }];
+    return [{ rank: 0, username: u.username, displayName: u.displayName, verifiedBadge: u.verifiedBadge ?? null, points: pointValues[i] }];
   });
   resolved.sort((a, b) => b.points - a.points);
   resolved.forEach((entry, i) => { entry.rank = i + 1; });

@@ -17,7 +17,7 @@ export type UserRecord = {
   passHash: string;
   emailVerified: boolean;
   /** Plan de la API (por defecto «free»). Solo lo cambia un moderador. */
-  plan?: "free" | "pro" | "ultra";
+  plan?: string;\n  planExpiresAt?: number | null;
   status?: "active" | "suspended";
   dailyLimit?: number | null;
   minuteLimit?: number | null;
@@ -31,7 +31,7 @@ const lc = (s: string) => s.trim().toLowerCase();
 export const isAdmin = (d: Deps, u: UserRecord): boolean => u.emailVerified && (d.adminEmails.includes(u.email) || u.role === "moderator");
 
 export function toMe(d: Deps, u: UserRecord): MeInfo {
-  return { uid: u.uid, username: u.username, displayName: u.displayName, createdAt: u.createdAt, email: u.email, emailVerified: u.emailVerified, admin: isAdmin(d, u), plan: u.plan ?? "free" };
+  return { uid: u.uid, username: u.username, displayName: u.displayName, createdAt: u.createdAt, email: u.email, emailVerified: u.emailVerified, admin: isAdmin(d, u), plan: u.planExpiresAt && u.planExpiresAt <= Date.now() ? "free" : u.plan ?? "free", planExpiresAt: u.planExpiresAt ?? null };
 }
 
 export async function getUser(d: Deps, uid: string): Promise<UserRecord | null> {
@@ -185,7 +185,7 @@ export async function listUsers(d: Deps, offset: number, limit: number): Promise
       displayName: u.displayName,
       email: u.email,
       emailVerified: u.emailVerified,
-      plan: u.plan ?? "free",
+      plan: u.planExpiresAt && u.planExpiresAt <= Date.now() ? "free" : u.plan ?? "free",\n      planExpiresAt: u.planExpiresAt ?? null,
       createdAt: u.createdAt,
       status: u.status ?? "active",
       dailyLimit: u.dailyLimit ?? null,

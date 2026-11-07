@@ -3,6 +3,7 @@ export type MeInfo = {
   uid: string;
   username: string;
   displayName: string;
+  verifiedBadge?: "blue" | "gold" | null;
   createdAt: number; // ms
   planExpiresAt?: number | null;
   email: string;
@@ -29,8 +30,9 @@ export type UserRow = {
   dailyLimit: number | null;
   minuteLimit: number | null;
   role: "user" | "moderator" | "admin";
+  verifiedBadge?: "blue" | "gold" | null;
   planExpiresAt?: number | null;
 };
 
 /** Una fila del ranking público de uso mensual. */
-export type RankingEntry = { rank: number; username: string; displayName: string; count: number; avatarV: number };
+export type RankingEntry = { rank: number; username: string; displayName: string; verifiedBadge?: "blue" | "gold" | null; count: number; avatarV: number };

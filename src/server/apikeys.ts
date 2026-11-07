@@ -3,7 +3,7 @@ import { AppError } from "./errors";
 import { hit } from "./store";
 import { randomBytes } from "node:crypto";
 import { sha256 } from "./tokens";
-import { getUser, type UserRecord } from "./users";
+import { getUser, recordUserActivity, type UserRecord } from "./users";
 
 export const PLANS = {
   free: { label: "Free", perDay: 100, perMinute: 30 },
@@ -70,7 +70,7 @@ export type Quota = { plan: PlanId; limit: number; used: number; remaining: numb
 
 export async function quotaFor(d: Deps, user: UserRecord, nowMs = Date.now()): Promise<Quota> {
   const plan = planOf(user);
-  const limit = PLANS[plan].perDay;
+  const limit = user.dailyLimit ?? PLANS[plan].perDay;
   const used = Math.min(limit, (await d.store.get<number>(`quota:${user.uid}:${dayStamp(nowMs)}`)) ?? 0);
   return { plan, limit, used, remaining: limit - used, resetAt: nextResetMs(nowMs) };
 }
@@ -86,18 +86,21 @@ export async function authenticateApiKey(d: Deps, raw: string | null, nowMs = Da
   const rec = await d.store.get<KeyRecord>(`apikey:${hash}`);
   const user = rec ? await getUser(d, rec.uid) : null;
   if (!rec || !user) throw new AppError(401, "Clave de API inválida o revocada.");
+  if (user.status === "suspended") throw new AppError(403, "La cuenta asociada a esta clave está suspendida.");
 
   const plan = planOf(user);
-  if (!(await hit(d.store, `rl:api:${user.uid}`, PLANS[plan].perMinute, 60))) {
+  const minuteLimit = user.minuteLimit ?? PLANS[plan].perMinute;
+  if (!(await hit(d.store, `rl:api:${user.uid}`, minuteLimit, 60))) {
     throw new AppError(429, "Demasiadas solicitudes por minuto. Espera unos segundos.");
   }
   const key = `quota:${user.uid}:${dayStamp(nowMs)}`;
   const used = await d.store.incr(key);
   if (used === 1) await d.store.expire(key, 2 * 86_400);
-  const limit = PLANS[plan].perDay;
+  const limit = user.dailyLimit ?? PLANS[plan].perDay;
   if (used > limit) throw new AppError(429, `Agotaste las ${limit} solicitudes de hoy. Se renuevan a las 12 a. m. (hora de Lima).`);
 
   if (nowMs - rec.lastUsedAt > 60_000) await d.store.set(`apikey:${hash}`, { ...rec, lastUsedAt: nowMs });
+  await recordUserActivity(d, user.uid, "uso_api", `Solicitud API con clave ${rec.prefix}…`);
   return { user, keyId: rec.id, quota: { plan, limit, used, remaining: limit - used, resetAt: nextResetMs(nowMs) } };
 }
 

@@ -200,7 +200,12 @@ export type ActivityEntry = { at: number; type: string; detail: string };
 
 export async function recordUserActivity(d: Deps, uid: string, type: string, detail: string): Promise<void> {
   const at = Date.now();
-  await d.store.zadd(`activity:${uid}`, at, JSON.stringify({ at, type, detail }));
+  const key = `activity:${uid}`;
+  await d.store.zadd(key, at, JSON.stringify({ at, type, detail }));
+  if (await d.store.zcard(key) > 100) {
+    const old = await d.store.zrange(key, 0, -101);
+    if (old.length) await d.store.zrem(key, ...old);
+  }
 }
 
 export async function listUserActivity(d: Deps, uid: string): Promise<ActivityEntry[]> {
@@ -211,24 +216,28 @@ export async function listUserActivity(d: Deps, uid: string): Promise<ActivityEn
 export async function recordAdminAction(d: Deps, actor: string, target: string, action: string, detail: string): Promise<void> {
   const at = Date.now();
   await d.store.zadd("admin:audit", at, JSON.stringify({ at, actor, target, action, detail }));
+  if (await d.store.zcard("admin:audit") > 500) {
+    const old = await d.store.zrange("admin:audit", 0, -501);
+    if (old.length) await d.store.zrem("admin:audit", ...old);
+  }
   await recordUserActivity(d, target, action, detail);
 }
 
 export async function updateAdminUser(d: Deps, actor: UserRecord, uid: string, patch: Record<string, unknown>): Promise<UserRecord> {
   const user = await getUser(d, uid);
   if (!user) throw new AppError(404, "Usuario no encontrado.");
-  if (d.adminEmails.includes(user.email)) throw new AppError(403, "No puedes modificar una cuenta administradora protegida.");
+  if (d.adminEmails.includes(user.email) || user.role === "moderator" && !d.adminEmails.includes(actor.email)) throw new AppError(403, "No puedes modificar esta cuenta protegida.");
   const next: UserRecord = { ...user };
   if (patch.status !== undefined) {
     if (patch.status !== "active" && patch.status !== "suspended") throw new AppError(400, "Estado no válido.");
     next.status = patch.status;
   }
   if (patch.dailyLimit !== undefined) {
-    if (patch.dailyLimit !== null && (!Number.isInteger(patch.dailyLimit) || Number(patch.dailyLimit) < 1 || Number(patch.dailyLimit) > 1000000)) throw new AppError(400, "El límite diario debe estar entre 1 y 1.000.000 o ser null.");
+    if (patch.dailyLimit !== null && (!Number.isInteger(Number(patch.dailyLimit)) || Number(patch.dailyLimit) < 1 || Number(patch.dailyLimit) > 1000000)) throw new AppError(400, "El límite diario debe estar entre 1 y 1.000.000 o ser null.");
     next.dailyLimit = patch.dailyLimit as number | null;
   }
   if (patch.minuteLimit !== undefined) {
-    if (patch.minuteLimit !== null && (!Number.isInteger(patch.minuteLimit) || Number(patch.minuteLimit) < 1 || Number(patch.minuteLimit) > 10000)) throw new AppError(400, "El límite por minuto debe estar entre 1 y 10.000 o ser null.");
+    if (patch.minuteLimit !== null && (!Number.isInteger(Number(patch.minuteLimit)) || Number(patch.minuteLimit) < 1 || Number(patch.minuteLimit) > 10000)) throw new AppError(400, "El límite por minuto debe estar entre 1 y 10.000 o ser null.");
     next.minuteLimit = patch.minuteLimit as number | null;
   }
   if (patch.role !== undefined) {

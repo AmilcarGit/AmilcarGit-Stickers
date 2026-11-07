@@ -57,6 +57,7 @@ export function Header() {
             <Link href="/admin" className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-surface2">
               Admin
             </Link>
+            <Link href="/admin/security" className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-surface2">Seguridad</Link>
           )}
         </nav>
 
@@ -112,6 +113,7 @@ export function Header() {
                   Admin
                 </Link>
               </li>
+              <li><Link href="/admin/security" className="block rounded-lg px-3 py-3 font-medium hover:bg-surface2">Centro de seguridad</Link></li>
             )}
             {user ? (
               <li>

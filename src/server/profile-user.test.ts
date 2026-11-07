@@ -56,6 +56,6 @@ describe("perfil personal", () => {
     expect(me.location).toBe("Perú");
     expect(me.email).toBe(user.email);
     expect(me).not.toHaveProperty("passHash");
-    expect(me).not.toHaveProperty("uid", "never-expose-this");
+    expect(me.uid).toBe(user.uid);
   });
 });

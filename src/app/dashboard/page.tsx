@@ -1,19 +1,23 @@
 "use client";
 
 import Link from "next/link";
+import { useAuth } from "@/components/Providers";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { RequireAuth, VerifyBanner } from "@/components/Guards";
 import { useToast } from "@/components/Providers";
-import { createApiKey, listApiKeys, revokeApiKey, type ApiKeyInfo, type ApiQuota } from "@/lib/data";
+import { createApiKey, listApiKeys, revokeApiKey, fetchRewards, claimDailyReward, type ApiKeyInfo, type ApiQuota, type RewardsData } from "@/lib/data";
 
 function DashboardInner() {
   const toast = useToast();
+  const { user } = useAuth();
   const [keys, setKeys] = useState<ApiKeyInfo[]>([]);
   const [quota, setQuota] = useState<ApiQuota | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [fresh, setFresh] = useState<string | null>(null);
+  const [rewards, setRewards] = useState<RewardsData | null>(null);
+  const [rewardBusy, setRewardBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -28,7 +32,27 @@ function DashboardInner() {
 
   useEffect(() => {
     void load();
-  }, [load]);
+    void fetchRewards().then(setRewards).catch((err) => toast(err instanceof Error ? err.message : "No se pudieron cargar las recompensas.", "error"));
+  }, [load, toast]);
+
+  async function claimDaily() {
+    setRewardBusy(true);
+    try {
+      const result = await claimDailyReward();
+      setRewards(result.rewards);
+      toast(`¡Ganaste ${result.bonus.points} puntos! Racha: ${result.bonus.streak} días.`, "ok");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudo reclamar la bonificación.", "error");
+    } finally {
+      setRewardBusy(false);
+    }
+  }
+
+  async function copyReferral() {
+    if (!rewards?.referralUrl) return;
+    try { await navigator.clipboard.writeText(rewards.referralUrl); toast("Enlace de invitación copiado.", "ok"); }
+    catch { toast("No se pudo copiar el enlace.", "error"); }
+  }
 
   async function create(e: FormEvent) {
     e.preventDefault();
@@ -78,6 +102,43 @@ function DashboardInner() {
           .
         </p>
       </header>
+
+      {rewards && (
+        <section aria-label="Puntos y recompensas" className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="card"><p className="text-sm text-muted">Tus puntos</p><p className="mt-1 text-3xl font-extrabold text-accent">{rewards.points.toLocaleString("es-PE")}</p></div>
+            <div className="card"><p className="text-sm text-muted">Invitaciones verificadas</p><p className="mt-1 text-3xl font-extrabold">{rewards.referrals}</p></div>
+            <div className="card"><p className="text-sm text-muted">Racha diaria</p><p className="mt-1 text-3xl font-extrabold">{rewards.daily.streak} días</p></div>
+          </div>
+          <div className="card flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="font-bold">Bonificación diaria</h2><p className="text-sm text-muted">Consigue puntos cada día. La recompensa aumenta con tu racha.</p></div>
+            <button type="button" className="btn-primary" disabled={rewardBusy || rewards.daily.claimed || !user?.emailVerified} onClick={claimDaily}>
+              {rewards.daily.claimed ? "Ya reclamada hoy" : rewardBusy ? "Reclamando…" : `Reclamar +${rewards.daily.nextPoints} puntos`}
+            </button>
+          </div>
+          {!user?.emailVerified && <p className="hint">Verifica tu correo para reclamar bonificaciones y participar en invitaciones.</p>}
+          {rewards.referralUrl && (
+            <div className="card">
+              <h2 className="font-bold">Invita amigos y gana puntos</h2>
+              <p className="mt-1 text-sm text-muted">Tú recibes 50 puntos y tu amigo 25 cuando verifique su cuenta.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <code className="min-w-0 flex-1 break-all rounded-lg bg-surface2 p-3 text-sm">{rewards.referralUrl}</code>
+                <button type="button" className="btn-primary" onClick={copyReferral}>Copiar enlace</button>
+              </div>
+            </div>
+          )}
+          <div className="card">
+            <h2 className="font-bold">Insignias</h2>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {rewards.badges.map((badge) => <div key={badge.id} className={`rounded-xl border p-3 ${badge.unlocked ? "border-brand/50 bg-brand/5" : "border-line opacity-60"}`}><p className="font-semibold">{badge.unlocked ? "🏅 " : "🔒 "}{badge.label}</p><p className="text-xs text-muted">{badge.description}</p></div>)}
+            </div>
+          </div>
+          <div className="card">
+            <h2 className="font-bold">Ranking de puntos</h2>
+            {rewards.leaderboard.length ? <ol className="mt-3 space-y-2">{rewards.leaderboard.map((entry) => <li key={entry.username} className="flex items-center justify-between gap-3 text-sm"><span>{entry.rank}. {entry.displayName} <span className="text-muted">@{entry.username}</span></span><strong>{entry.points} pts</strong></li>)}</ol> : <p className="mt-2 text-sm text-muted">Aún no hay participantes.</p>}
+          </div>
+        </section>
+      )}
 
       {quota && (
         <section aria-label="Uso de hoy" className="card">

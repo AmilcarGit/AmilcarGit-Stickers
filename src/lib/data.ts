@@ -82,7 +82,7 @@ export async function getAdminUser(uid: string): Promise<AdminUserDetail> {
   return api(`/api/admin/users/${encodeURIComponent(uid)}`);
 }
 
-export async function updateAdminUser(uid: string, patch: { status?: "active" | "suspended"; dailyLimit?: number | null; minuteLimit?: number | null; role?: "user" | "moderator"; displayName?: string }): Promise<UserRow> {
+export async function updateAdminUser(uid: string, patch: { status?: "active" | "suspended"; dailyLimit?: number | null; minuteLimit?: number | null; role?: "user" | "moderator"; displayName?: string; verifiedBadge?: "blue" | "gold" | null }): Promise<UserRow> {
   const result = await api<{ user: UserRow }>(`/api/admin/users/${encodeURIComponent(uid)}`, { method: "PATCH", body: patch });
   return result.user;
 }

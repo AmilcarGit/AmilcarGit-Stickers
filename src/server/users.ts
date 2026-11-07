@@ -1,4 +1,4 @@
-import type { MeInfo, UserRow } from "@/lib/types";
+import type { AdminBadge, MeInfo, UserRow } from "@/lib/types";
 import { normalizeUsername, validateEmail, validatePassword, validateUsername } from "@/lib/validators";
 import type { Deps } from "./deps";
 import { resetMail, verificationMail } from "./emails";
@@ -15,6 +15,7 @@ export type UserRecord = {
   username: string;
   displayName: string;
   verifiedBadge?: "blue" | "gold" | null;
+  adminBadges?: AdminBadge[];
   createdAt: number;
   passHash: string;
   emailVerified: boolean;
@@ -42,7 +43,7 @@ const lc = (s: string) => s.trim().toLowerCase();
 export const isAdmin = (d: Deps, u: UserRecord): boolean => u.emailVerified && (d.adminEmails.includes(u.email) || u.role === "moderator");
 
 export function toMe(d: Deps, u: UserRecord): MeInfo {
-  return { uid: u.uid, username: u.username, displayName: u.displayName, verifiedBadge: u.verifiedBadge ?? null, createdAt: u.createdAt, email: u.email, emailVerified: u.emailVerified, admin: isAdmin(d, u), plan: u.planExpiresAt && u.planExpiresAt <= Date.now() ? "free" : u.plan ?? "free", planExpiresAt: u.planExpiresAt ?? null, avatarV: u.avatarV ?? 0, showInRanking: u.showInRanking !== false, bio: u.bio ?? "", location: u.location ?? "" };
+  return { uid: u.uid, username: u.username, displayName: u.displayName, verifiedBadge: u.verifiedBadge ?? null, adminBadges: [...(u.adminBadges ?? []), ...(d.adminEmails[0] === u.email ? [{ id: "amilcargit", label: "AmilcarGit", icon: "♛", color: "rainbow" as const, reason: "Creador de YuiAPI", awardedAt: u.createdAt, awardedBy: "system" }] : [])], createdAt: u.createdAt, email: u.email, emailVerified: u.emailVerified, admin: isAdmin(d, u), plan: u.planExpiresAt && u.planExpiresAt <= Date.now() ? "free" : u.plan ?? "free", planExpiresAt: u.planExpiresAt ?? null, avatarV: u.avatarV ?? 0, showInRanking: u.showInRanking !== false, bio: u.bio ?? "", location: u.location ?? "" };
 }
 
 export async function getUser(d: Deps, uid: string): Promise<UserRecord | null> {
@@ -267,6 +268,21 @@ export async function updateAdminUser(d: Deps, actor: UserRecord, uid: string, p
   if (patch.displayName !== undefined) {
     if (typeof patch.displayName !== "string" || !patch.displayName.trim() || patch.displayName.length > 60) throw new AppError(400, "El nombre debe tener entre 1 y 60 caracteres.");
     next.displayName = patch.displayName.trim();
+  }
+  if (patch.adminBadges !== undefined) {
+    if (!d.adminEmails.includes(actor.email)) throw new AppError(403, "Solo el administrador principal puede administrar insignias especiales.");
+    if (!Array.isArray(patch.adminBadges) || patch.adminBadges.length > 12) throw new AppError(400, "Puedes asignar hasta 12 insignias.");
+    const colors = ["gold", "blue", "purple", "pink", "green", "rainbow"];
+    const badges: AdminBadge[] = [];
+    for (const raw of patch.adminBadges) {
+      if (!raw || typeof raw !== "object") throw new AppError(400, "Insignia no válida.");
+      const item = raw as Record<string, unknown>;
+      if (typeof item.id !== "string" || !/^[a-z0-9-]{1,40}$/.test(item.id) || typeof item.label !== "string" || !item.label.trim() || item.label.length > 28 || typeof item.icon !== "string" || !item.icon.trim() || item.icon.length > 8 || !colors.includes(String(item.color))) throw new AppError(400, "Revisa el nombre, icono o color de la insignia.");
+      if (item.id === "amilcargit" && d.adminEmails[0] !== actor.email) throw new AppError(403, "La insignia AmilcarGit está reservada al creador.");
+      badges.push({ id: item.id, label: item.id === "amilcargit" ? "AmilcarGit" : item.label.trim(), icon: item.id === "amilcargit" ? "♛" : item.icon.trim(), color: item.color as AdminBadge["color"], reason: typeof item.reason === "string" ? item.reason.trim().slice(0, 120) : "", awardedAt: Date.now(), awardedBy: actor.uid });
+    }
+    if (new Set(badges.map((badge) => badge.id)).size !== badges.length) throw new AppError(400, "No puedes repetir una insignia.");
+    next.adminBadges = badges;
   }
   if (patch.verifiedBadge !== undefined) {
     if (!d.adminEmails.includes(actor.email)) throw new AppError(403, "Solo el administrador principal puede asignar insignias de verificación.");

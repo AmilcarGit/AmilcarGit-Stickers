@@ -22,7 +22,14 @@ function AdminInner() {
   const [loaded, setLoaded] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [changing, setChanging] = useState<string | null>(null);\n  const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);\n  const [activity, setActivity] = useState<{ at: number; type: string; detail: string }[]>([]);\n  const [dailyLimit, setDailyLimit] = useState("");\n  const [minuteLimit, setMinuteLimit] = useState("");\n  const [role, setRole] = useState<"user" | "moderator">("user");\n  const [savingProfile, setSavingProfile] = useState(false);
+  const [changing, setChanging] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
+  const [activity, setActivity] = useState<{ at: number; type: string; detail: string }[]>([]);
+  const [dailyLimit, setDailyLimit] = useState("");
+  const [minuteLimit, setMinuteLimit] = useState("");
+  const [role, setRole] = useState<"user" | "moderator">("user");
+  const [canManageRoles, setCanManageRoles] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
 
   const loadUsers = useCallback(async (offset: number) => {
     try {
@@ -96,7 +103,7 @@ function AdminInner() {
     }
     setSavingProfile(true);
     try {
-      const updated = await updateAdminUser(selectedUser.uid, { dailyLimit: daily, minuteLimit: minute, role });
+      const updated = await updateAdminUser(selectedUser.uid, { dailyLimit: daily, minuteLimit: minute, ...(canManageRoles ? { role } : {}) });
       setSelectedUser(updated);
       setUsers((list) => list.map((x) => x.uid === updated.uid ? updated : x));
       const detail = await getAdminUser(updated.uid);
@@ -262,7 +269,8 @@ function AdminInner() {
                     <th scope="col" className="px-4 py-3 font-semibold">Correo</th>
                     <th scope="col" className="px-4 py-3 font-semibold">Verificación</th>
                     <th scope="col" className="px-4 py-3 font-semibold">Plan API</th>
-                    <th scope="col" className="px-4 py-3 font-semibold">Registro</th>\n                    <th scope="col" className="px-4 py-3 font-semibold">Gestión</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Registro</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Gestión</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -306,7 +314,8 @@ function AdminInner() {
                         </select>
                         {changing === u.uid && <span className="ml-2 text-xs text-muted">Guardando…</span>}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-muted">{formatDate(u.createdAt)}</td>\n                      <td className="px-4 py-4"><button type="button" onClick={() => void openUser(u)} className="rounded-lg border border-violet-400/30 bg-violet-400/10 px-3 py-2 text-xs font-semibold text-violet-200 hover:bg-violet-400/20">Gestionar</button></td>
+                      <td className="px-4 py-4 whitespace-nowrap text-muted">{formatDate(u.createdAt)}</td>
+                      <td className="px-4 py-4"><button type="button" onClick={() => void openUser(u)} className="rounded-lg border border-violet-400/30 bg-violet-400/10 px-3 py-2 text-xs font-semibold text-violet-200 hover:bg-violet-400/20">Gestionar</button></td>
                     </tr>
                   ))}
                 </tbody>

@@ -68,7 +68,7 @@ export default function DocsPage() {
 
       <section aria-labelledby="files" className="space-y-3">
         <h2 id="files" className="text-2xl font-bold">Archivos, imágenes y descargas</h2>
-        <p className="text-sm text-muted">Los endpoints de archivo reciben el contenido binario en el cuerpo de una solicitud POST. El tamaño máximo general es 8 MB (2 MB para la conversión Base64). Las operaciones de imagen admiten PNG, JPG y WebP estáticos; los GIF animados se procesan con el endpoint de stickers.</p>
+        <p className="text-sm text-muted">Los endpoints de archivo reciben el contenido binario en el cuerpo de una solicitud POST. El tamaño máximo para estas herramientas es 4 MB (2 MB para la conversión Base64); el endpoint de stickers conserva su límite propio de 5 MB. Las operaciones de imagen admiten PNG, JPG y WebP estáticos; los GIF animados se procesan con el endpoint de stickers.</p>
         <pre className={code}>{`curl -X POST -H "x-api-key: TU_CLAVE" -H "content-type: image/png" --data-binary @foto.png "${BASE}/api/v1/tools/image-compress?quality=75" -o foto-yuiapi.webp`}</pre>
         <p className="text-sm text-muted">El explorador muestra una vista previa para imágenes y un botón para descargar los archivos resultantes. También genera ejemplos para JavaScript, Python y cURL.</p>
       </section>
@@ -107,7 +107,7 @@ curl -X POST -H "x-api-key: TU_CLAVE" --data-binary @foto.jpg \\
                 <p className="mt-2 text-sm">{e.what}</p>
                 {(e.params.length > 0 || e.body) && (
                   <p className="mt-1 break-words text-xs text-muted">
-                    {e.body && "Cuerpo: la imagen (o multipart «file»). "}
+                    {e.body && "Cuerpo: archivo binario en el body de POST. "}
                     {e.params.map((p) => `?${p.name}= (${p.label})`).join("  ")}
                   </p>
                 )}

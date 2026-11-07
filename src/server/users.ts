@@ -23,6 +23,10 @@ export type UserRecord = {
   dailyLimit?: number | null;
   minuteLimit?: number | null;
   role?: "user" | "moderator";
+  /** Versión de la foto de perfil (0 o ausente = sin foto). */
+  avatarV?: number;
+  /** Aparecer en el ranking público de uso (por defecto sí). */
+  showInRanking?: boolean;
 };
 
 const VERIFY_TTL = 60 * 60 * 24;
@@ -32,7 +36,7 @@ const lc = (s: string) => s.trim().toLowerCase();
 export const isAdmin = (d: Deps, u: UserRecord): boolean => u.emailVerified && (d.adminEmails.includes(u.email) || u.role === "moderator");
 
 export function toMe(d: Deps, u: UserRecord): MeInfo {
-  return { uid: u.uid, username: u.username, displayName: u.displayName, createdAt: u.createdAt, email: u.email, emailVerified: u.emailVerified, admin: isAdmin(d, u), plan: u.planExpiresAt && u.planExpiresAt <= Date.now() ? "free" : u.plan ?? "free", planExpiresAt: u.planExpiresAt ?? null };
+  return { uid: u.uid, username: u.username, displayName: u.displayName, createdAt: u.createdAt, email: u.email, emailVerified: u.emailVerified, admin: isAdmin(d, u), plan: u.planExpiresAt && u.planExpiresAt <= Date.now() ? "free" : u.plan ?? "free", planExpiresAt: u.planExpiresAt ?? null, avatarV: u.avatarV ?? 0, showInRanking: u.showInRanking !== false };
 }
 
 export async function getUser(d: Deps, uid: string): Promise<UserRecord | null> {

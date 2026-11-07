@@ -1,3 +1,4 @@
+import { recordUsage } from "./profile";
 import type { Deps } from "./deps";
 import { AppError } from "./errors";
 import { hit } from "./store";
@@ -165,6 +166,7 @@ export async function authenticateApiKey(d: Deps, raw: string | null, nowMs = Da
   if (keyUsed === 1) await d.store.expire(keyQuotaKey, 2 * 86_400);
   const keyLimit = rec.dailyLimit ?? userLimit;
   if (keyUsed > keyLimit) throw new AppError(429, `Esta clave agotó sus ${keyLimit} solicitudes diarias.`);
+  await recordUsage(d, user.uid, nowMs);
   if (nowMs - rec.lastUsedAt > 60_000) await d.store.set(`apikey:${hash}`, { ...rec, lastUsedAt: nowMs });
   await d.store.hincrby(`apikey-usage:${rec.id}:${stamp}`, "requests", 1);
   await d.store.zadd(`apikey-days:${rec.id}`, nowMs, stamp);

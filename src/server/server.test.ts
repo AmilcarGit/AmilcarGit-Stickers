@@ -1,3 +1,5 @@
+import sharp from "sharp";
+import { avatarByUsername, monthlyRanking, removeAvatar, setAvatar, setRankingVisibility } from "./profile";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Deps } from "./deps";
 import type { Mail } from "./mailer";
@@ -352,5 +354,74 @@ describe("claves de API y cuotas", () => {
     expect((await authenticateApiKey(d, key)).quota).toMatchObject({ plan: "pro", limit: 2000 });
     expect((await rejects(setUserPlan(d, u.uid, "gratis-total"))).status).toBe(400);
     expect((await rejects(setUserPlan(d, "u_nadie", "pro"))).status).toBe(404);
+  });
+});
+
+describe("foto de perfil y ranking", () => {
+  beforeEach(() => {
+    store = new MemoryStore();
+    d = makeDeps();
+    sent = [];
+  });
+
+  const png = (w = 600, h = 300) => sharp({ create: { width: w, height: h, channels: 3, background: "#f472b6" } }).png().toBuffer();
+
+  it("recorta la foto a 256x256 WebP y se sirve por usuario", async () => {
+    const { user } = await reg();
+    const next = await setAvatar(d, user.uid, new Uint8Array(await png()), 5_000);
+    expect(next.avatarV).toBe(5_000);
+    const bytes = await avatarByUsername(d, "ANA");
+    expect(bytes).not.toBeNull();
+    const meta = await sharp(Buffer.from(bytes!)).metadata();
+    expect([meta.format, meta.width, meta.height]).toEqual(["webp", 256, 256]);
+    expect(await avatarByUsername(d, "nadie")).toBeNull();
+  });
+
+  it("rechaza archivos que no son imagen, vacíos o muy pesados", async () => {
+    const { user } = await reg();
+    expect((await rejects(setAvatar(d, user.uid, new TextEncoder().encode("hola")))).status).toBe(400);
+    expect((await rejects(setAvatar(d, user.uid, new Uint8Array(0)))).status).toBe(400);
+    expect((await rejects(setAvatar(d, user.uid, new Uint8Array(2 * 1024 * 1024 + 1)))).status).toBe(413);
+  });
+
+  it("quita la foto", async () => {
+    const { user } = await reg();
+    await setAvatar(d, user.uid, new Uint8Array(await png()));
+    expect((await removeAvatar(d, user.uid)).avatarV).toBe(0);
+    expect(await avatarByUsername(d, "ana")).toBeNull();
+  });
+
+  async function keyFor(email: string, username: string) {
+    const { user } = await reg({ email, username });
+    await verifyEmail(d, tokenFrom(sent[sent.length - 1]));
+    return { uid: user.uid, key: (await createApiKey(d, (await getUser(d, user.uid))!, "bot")).key };
+  }
+
+  it("cuenta solo solicitudes exitosas y ordena de mayor a menor", async () => {
+    const a = await keyFor("ana@x.com", "ana");
+    const b = await keyFor("bea@x.com", "bea");
+    const now = Date.UTC(2026, 10, 15, 12);
+    for (let i = 0; i < 3; i++) await authenticateApiKey(d, a.key, now);
+    for (let i = 0; i < 5; i++) await authenticateApiKey(d, b.key, now);
+    await rejects(authenticateApiKey(d, "amk_clave_falsa_clave_falsa_clave", now));
+    const r = await monthlyRanking(d, now);
+    expect(r.month).toBe("2026-11");
+    expect(r.entries.map((e) => [e.rank, e.username, e.count])).toEqual([
+      [1, "bea", 5],
+      [2, "ana", 3],
+    ]);
+    expect(JSON.stringify(r)).not.toContain("@x.com");
+    expect(JSON.stringify(r)).not.toContain(a.uid);
+  });
+
+  it("respeta quién no quiere salir y no mezcla meses", async () => {
+    const a = await keyFor("ana@x.com", "ana");
+    const b = await keyFor("bea@x.com", "bea");
+    const now = Date.UTC(2026, 10, 15, 12);
+    await authenticateApiKey(d, a.key, now);
+    await authenticateApiKey(d, b.key, now);
+    await setRankingVisibility(d, b.uid, false);
+    expect((await monthlyRanking(d, now)).entries.map((e) => e.username)).toEqual(["ana"]);
+    expect((await monthlyRanking(d, Date.UTC(2026, 11, 2, 12))).entries).toEqual([]);
   });
 });

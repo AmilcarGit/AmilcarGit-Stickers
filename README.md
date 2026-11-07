@@ -20,6 +20,7 @@ Producción: <https://yuiapi.vercel.app>
 - **Búsqueda:** música (Apple iTunes Search, fragmento oficial de 30 s), anime (Jikan), Wikipedia, libros (Open Library) e imágenes con licencia abierta (Openverse).
 - **Herramientas:** QR, hash, UUID, Base64, contraseñas.
 - **Claves:** `amk_…`, guardadas solo como hash SHA-256 y mostradas una vez; máx. 5 por cuenta y correo verificado. Planes Free (100/día, 30/min), Pro (2 000/día, 120/min), Ultra (10 000/día, 300/min); reinicio a medianoche de Lima. Los cambia un administrador desde `/admin`. **No hay cobros implementados.**
+- **Perfil y ranking:** cada persona puede subir una foto (se recorta a 256×256 WebP y se guarda en Redis, máx. 2 MB). `/ranking` muestra el top 10 del mes por solicitudes exitosas (hora de Lima); se puede salir del ranking desde Mi cuenta y nunca expone correo.
 - **Qué NO incluye, a propósito:** descargas de YouTube, Spotify, Apple Music, TikTok o similares (violan sus términos y derechos de autor).
 
 La clave se envía en `x-api-key`, `Authorization: Bearer …` o `?apikey=` (evítalo en URLs). Respuestas `{ ok: true, … }` / `{ ok: false, error }`, con cabeceras `x-ratelimit-*` y CORS abierto.

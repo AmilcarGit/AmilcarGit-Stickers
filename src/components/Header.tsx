@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { InstallButton } from "./InstallButton";
+import { Avatar } from "./Avatar";
 import { Mascot, Wordmark } from "./Mascot";
 import { useAuth, useToast } from "./Providers";
 import { ThemeToggle } from "./ThemeToggle";
@@ -11,6 +12,7 @@ import { ThemeToggle } from "./ThemeToggle";
 const links = [
   { href: "/endpoints", label: "Endpoints" },
   { href: "/docs", label: "Docs" },
+  { href: "/ranking", label: "Ranking" },
   { href: "/dashboard", label: "Mi panel" },
 ];
 
@@ -73,9 +75,7 @@ export function Header() {
           {user && (
             <>
               <Link href="/settings" className="hidden items-center gap-2 sm:flex" aria-label="Mi cuenta">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand/30 text-sm font-bold">
-                  {(user.displayName || user.email || "?").slice(0, 1).toUpperCase()}
-                </span>
+                <Avatar username={user.username} name={user.displayName} v={user.avatarV} size={36} />
               </Link>
               <button type="button" onClick={logout} className="btn-ghost !min-h-[40px] hidden sm:inline-flex">
                 Salir

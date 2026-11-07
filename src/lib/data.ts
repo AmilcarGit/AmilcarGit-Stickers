@@ -1,5 +1,5 @@
 import { api } from "./api";
-import type { MeInfo, UserRow } from "./types";
+import type { MeInfo, RankingEntry, UserRow } from "./types";
 import { normalizeUsername } from "./validators";
 
 /* ------------------------------ Cuenta ------------------------------ */
@@ -41,7 +41,7 @@ export async function resetPassword(token: string, password: string): Promise<vo
   await api("/api/auth/reset", { method: "POST", body: { token, password } });
 }
 
-export async function saveProfile(patch: { displayName: string }): Promise<MeInfo> {
+export async function saveProfile(patch: { displayName?: string; showInRanking?: boolean }): Promise<MeInfo> {
   return (await api<{ me: MeInfo }>("/api/me/profile", { method: "PATCH", body: patch })).me;
 }
 
@@ -118,4 +118,26 @@ export async function saveAdminPlan(plan: { id?: string; label: string; perDay: 
 }
 export async function deleteAdminPlan(id: string): Promise<void> {
   await api(`/api/admin/plans?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+/* ------------------------- Foto de perfil y ranking ------------------------- */
+
+export async function uploadAvatar(file: File): Promise<MeInfo> {
+  let res: Response;
+  try {
+    res = await fetch("/api/me/avatar", { method: "POST", headers: { "content-type": file.type || "application/octet-stream" }, body: file, cache: "no-store" });
+  } catch {
+    throw new Error("No hay conexión con el servidor. Revisa tu internet.");
+  }
+  const data = (await res.json().catch(() => null)) as { me?: MeInfo; error?: string } | null;
+  if (!res.ok || !data?.me) throw new Error(data?.error ?? "No se pudo subir la foto.");
+  return data.me;
+}
+
+export async function deleteAvatar(): Promise<MeInfo> {
+  return (await api<{ me: MeInfo }>("/api/me/avatar", { method: "DELETE" })).me;
+}
+
+export async function fetchRanking(): Promise<{ month: string; entries: RankingEntry[] }> {
+  return api("/api/ranking");
 }

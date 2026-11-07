@@ -51,6 +51,8 @@ Bots y apps ── x-api-key ─────────► │ sticker, search,
 | `verify:{sha256}`, `reset:{sha256}` | tokens de un solo uso con caducidad |
 | `apikey:{hash}`, `apikeys:{uid}` | claves (solo hash) y su índice por usuario |
 | `quota:{uid}:{día}` | contador diario de solicitudes |
+| `avatar:{uid}` | foto de perfil en base64 (WebP 256×256) |
+| `usage:{AAAAMM}` (hash) | solicitudes exitosas por usuario en el mes; caduca a los 70 días |
 | `rl:*` | contadores de límite de uso |
 
 ## Pruebas

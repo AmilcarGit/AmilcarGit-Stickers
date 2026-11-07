@@ -9,6 +9,9 @@ export type MeInfo = {
   emailVerified: boolean;
   admin: boolean;
   plan: string;
+  /** 0 = sin foto; si no, versión para refrescar la caché. */
+  avatarV: number;
+  showInRanking: boolean;
 };
 
 /** Fila del registro de usuarios que ve un moderador. */
@@ -26,3 +29,6 @@ export type UserRow = {
   role: "user" | "moderator" | "admin";
   planExpiresAt?: number | null;
 };
+
+/** Una fila del ranking público de uso mensual. */
+export type RankingEntry = { rank: number; username: string; displayName: string; count: number; avatarV: number };

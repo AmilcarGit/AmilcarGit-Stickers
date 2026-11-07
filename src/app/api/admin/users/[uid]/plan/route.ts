@@ -6,8 +6,8 @@ export const runtime = "nodejs";
 
 export const POST = routeWith<{ uid: string }>(async ({ d, req }, { uid }) => {
   const { user: actor } = await requireUser(d, req, { admin: true });
-  const b = await readJson(req, 1_000);
-  await setUserPlan(d, uid, b.plan);
-  await recordAdminAction(d, actor.uid, uid, "cambio_plan", `Plan asignado: ${String(b.plan)}`);
+  const body = await readJson(req, 1000);
+  await setUserPlan(d, uid, body.plan, body.durationDays);
+  await recordAdminAction(d, actor.uid, uid, "cambio_plan", `Plan asignado: ${String(body.plan)}${body.durationDays ? ` durante ${String(body.durationDays)} días` : " permanente"}`);
   return json({ ok: true });
 });

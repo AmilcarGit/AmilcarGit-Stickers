@@ -82,3 +82,9 @@ export async function updateAdminUser(uid: string, patch: { status?: "active" | 
   const result = await api<{ user: UserRow }>(`/api/admin/users/${encodeURIComponent(uid)}`, { method: "PATCH", body: patch });
   return result.user;
 }
+
+
+export type AdminAuditEntry = { at: number; actor: string; target: string; action: string; detail: string };
+export async function getAdminAudit(): Promise<AdminAuditEntry[]> {
+  return (await api<{ actions: AdminAuditEntry[] }>("/api/admin/audit")).actions;
+}

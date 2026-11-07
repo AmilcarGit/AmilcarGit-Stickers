@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RequireAdmin } from "@/components/Guards";
 import { useToast } from "@/components/Providers";
-import { createAdminKey, deleteAdminPlan, getAdminAudit, getAdminKeyUsage, getAdminUser, listAdminKeys, listAdminPlans, listUsers, revokeAdminKey, rotateAdminKey, saveAdminPlan, setUserPlan, updateAdminKey, updateAdminUser } from "@/lib/data";
+import { createAdminKey, deleteAdminPlan, getAdminAudit, getAdminKeyUsage, getAdminUser, listAdminKeys, listAdminPlans, listUsers, revokeAdminKey, rotateAdminKey, saveAdminPlan, setUserPlan, updateAdminKey, updateAdminUser, giftUserPlan } from "@/lib/data";
 import type { AdminPlan, ApiKeyInfo, ApiKeyUsage } from "@/lib/data";
 import type { UserRow } from "@/lib/types";
 
@@ -41,6 +41,8 @@ function AdminInner() {
   const [planMinute, setPlanMinute] = useState("60");
   const [selectedPlan, setSelectedPlan] = useState("free");
   const [planDays, setPlanDays] = useState("");
+  const [giftPlan, setGiftPlan] = useState<"pro" | "ultra">("pro");
+  const [giftDays, setGiftDays] = useState("7");
   const [keyHistory, setKeyHistory] = useState<{ id: string; rows: ApiKeyUsage[] } | null>(null);
 
   const loadUsers = useCallback(async (offset: number) => {
@@ -223,6 +225,21 @@ function AdminInner() {
       setActivity(detail.activity);
       toast("Plan asignado correctamente.", "ok");
     } catch (err) { toast(err instanceof Error ? err.message : "No se pudo asignar el plan.", "error"); }
+  }
+
+  async function giftSelectedPlan() {
+    if (!selectedUser) return;
+    const days = Number(giftDays);
+    if (!Number.isInteger(days) || days < 1 || days > 365) { toast("El regalo debe durar entre 1 y 365 días.", "error"); return; }
+    try {
+      const result = await giftUserPlan(selectedUser.uid, giftPlan, days);
+      const detail = await getAdminUser(selectedUser.uid);
+      setSelectedUser(detail.user);
+      setUsers((items) => items.map((item) => item.uid === selectedUser.uid ? detail.user : item));
+      setActivity(detail.activity);
+      toast(`Regalaste ${days} días de ${giftPlan.toUpperCase()}.`, "ok");
+      void result;
+    } catch (err) { toast(err instanceof Error ? err.message : "No se pudo regalar el plan.", "error"); }
   }
 
   async function createCustomPlan() {
@@ -496,6 +513,15 @@ function AdminInner() {
               <div className="flex items-end"><button type="button" onClick={() => void assignSelectedPlan()} className="min-h-10 w-full rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white">Asignar plan</button></div>
             </div>
             {selectedUser.planExpiresAt && <p className="mt-2 text-xs text-muted">Acceso actual vence: {new Date(selectedUser.planExpiresAt).toLocaleString("es-PE")}</p>}
+            <div className="mt-4 rounded-xl border border-violet-400/20 bg-violet-400/5 p-3">
+              <h4 className="font-semibold">Regalar días Pro / Ultra</h4>
+              <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                <select value={giftPlan} onChange={(e) => setGiftPlan(e.target.value as "pro" | "ultra")} className="min-h-10 rounded-lg border border-line bg-bg px-3 text-sm text-ink"><option value="pro">Pro</option><option value="ultra">Ultra</option></select>
+                <input value={giftDays} onChange={(e) => setGiftDays(e.target.value)} inputMode="numeric" min="1" max="365" placeholder="Días" className="min-h-10 rounded-lg border border-line bg-bg px-3 text-sm text-ink" />
+                <button type="button" onClick={() => void giftSelectedPlan()} className="min-h-10 rounded-lg bg-violet-600 px-4 text-sm font-semibold text-white">Regalar acceso</button>
+              </div>
+              <p className="mt-2 text-xs text-muted">Los días se suman al vencimiento actual si ya tiene un plan temporal.</p>
+            </div>
           </div>
           <div className="mt-5 border-t border-line pt-4">
             <h3 className="font-semibold">Historial de actividad</h3>

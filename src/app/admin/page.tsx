@@ -422,9 +422,7 @@ function AdminInner() {
                           disabled={changing === u.uid}
                           onChange={(e) => changePlan(u, e.target.value as UserRow["plan"])}
                         >
-                          <option value="free">Free</option>
-                          <option value="pro">Pro</option>
-                          <option value="ultra">Ultra</option>
+                          {adminPlans.map((plan) => <option key={plan.id} value={plan.id}>{plan.label}</option>)}
                         </select>
                         {changing === u.uid && <span className="ml-2 text-xs text-muted">Guardando…</span>}
                       </td>

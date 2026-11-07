@@ -111,7 +111,7 @@ function DashboardInner() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
+    <div className="yui-dashboard mx-auto max-w-5xl space-y-8">
       <VerifyBanner />
       <header>
         <h1 className="text-3xl font-bold">Mi panel</h1>

@@ -72,7 +72,7 @@ export async function setUserPlan(uid: string, plan: "free" | "pro" | "ultra"): 
 
 
 export type AdminActivity = { at: number; type: string; detail: string };
-export type AdminUserDetail = UserRow & { activity: AdminActivity[] };
+export type AdminUserDetail = { user: UserRow; activity: AdminActivity[] };
 
 export async function getAdminUser(uid: string): Promise<AdminUserDetail> {
   return api(`/api/admin/users/${encodeURIComponent(uid)}`);

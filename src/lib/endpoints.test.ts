@@ -13,6 +13,8 @@ describe("catálogo de endpoints", () => {
     expect(ENDPOINTS.some((e) => e.path === "/api/v1/tools/image-resize")).toBe(true);
     expect(ENDPOINTS.some((e) => e.path === "/api/v1/tools/json-format")).toBe(true);
     expect(ENDPOINTS.some((e) => e.path === "/api/v1/tools/url-encode")).toBe(true);
+    expect(ENDPOINTS.some((e) => e.path === "/api/v1/search/youtube")).toBe(true);
+    expect(ENDPOINTS.some((e) => e.path === "/api/v1/search/pinterest")).toBe(true);
   });
 
   it("buildUrl omite vacíos y codifica", () => {

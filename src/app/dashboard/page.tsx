@@ -7,7 +7,7 @@ import { RequireAuth, VerifyBanner } from "@/components/Guards";
 import { Avatar } from "@/components/Avatar";
 import { VerifiedName } from "@/components/VerifiedName";
 import { Mascot } from "@/components/Mascot";
-import { createApiKey, listApiKeys, revokeApiKey, fetchRewards, claimDailyReward, type ApiKeyInfo, type ApiQuota, type RewardsData } from "@/lib/data";
+import { createApiKey, getApiKeySecret, listApiKeys, revokeApiKey, fetchRewards, claimDailyReward, type ApiKeyInfo, type ApiQuota, type RewardsData } from "@/lib/data";
 
 function DashboardInner() {
   const toast = useToast();
@@ -19,6 +19,8 @@ function DashboardInner() {
   const [busy, setBusy] = useState(false);
   const [fresh, setFresh] = useState<string | null>(null);
   const freshInputRef = useRef<HTMLInputElement>(null);
+  const [revealed, setRevealed] = useState<{ id: string; key: string } | null>(null);
+  const [revealBusy, setRevealBusy] = useState<string | null>(null);
   const [rewards, setRewards] = useState<RewardsData | null>(null);
   const [rewardBusy, setRewardBusy] = useState(false);
 
@@ -87,25 +89,41 @@ function DashboardInner() {
     try {
       if (navigator.clipboard?.writeText && window.isSecureContext) {
         await navigator.clipboard.writeText(text);
-      } else {
-        throw new Error("Clipboard API no disponible");
+        toast("Clave copiada al portapapeles.", "ok");
+        return;
       }
-      toast("Clave copiada al portapapeles.", "ok");
     } catch {
-      const field = freshInputRef.current;
-      if (field && field.value === text) {
-        field.focus();
-        field.select();
-        field.setSelectionRange(0, field.value.length);
-        const copied = document.execCommand("copy");
-        if (copied) {
-          toast("Clave copiada al portapapeles.", "ok");
-        } else {
-          toast("La clave quedó seleccionada. Mantén pulsado el campo y elige Copiar.", "error");
-        }
-      } else {
-        toast("No se pudo copiar. Selecciona la clave y cópiala manualmente.", "error");
-      }
+      // Usa el método compatible con navegadores móviles.
+    }
+    const field = document.createElement("textarea");
+    field.value = text;
+    field.setAttribute("readonly", "");
+    field.style.position = "fixed";
+    field.style.opacity = "0";
+    field.style.fontSize = "16px";
+    document.body.appendChild(field);
+    field.focus();
+    field.select();
+    field.setSelectionRange(0, text.length);
+    const copied = document.execCommand("copy");
+    field.remove();
+    if (copied) toast("Clave copiada al portapapeles.", "ok");
+    else toast("La clave quedó disponible para seleccionarla y copiarla manualmente.", "error");
+  }
+
+  async function reveal(k: ApiKeyInfo) {
+    if (revealed?.id === k.id) {
+      setRevealed(null);
+      return;
+    }
+    setRevealBusy(k.id);
+    try {
+      const key = await getApiKeySecret(k.id);
+      setRevealed({ id: k.id, key });
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "No se pudo recuperar la clave.", "error");
+    } finally {
+      setRevealBusy(null);
     }
   }
 
@@ -211,7 +229,7 @@ function DashboardInner() {
               <div className="yui-empty-state"><span>⌘</span><strong>Aún no tienes API Keys</strong><p>Crea tu primera clave para conectar un proyecto con YuiAPI.</p></div>
             ) : (
               <ul className="yui-key-list">
-                {keys.map((k) => <li key={k.id} className="yui-key-item"><span className="yui-key-icon">⌘</span><div className="yui-key-info"><strong>{k.name}</strong><code>{k.prefix}••••••••</code><small>Creada {new Date(k.createdAt).toLocaleDateString("es-PE")} · {k.lastUsedAt ? `Último uso ${new Date(k.lastUsedAt).toLocaleString("es-PE")}` : "Todavía no utilizada"}</small></div><span className="yui-key-status">ACTIVA</span><button type="button" className="btn-danger" onClick={() => revoke(k)}>Revocar</button></li>)}
+                {keys.map((k) => <li key={k.id} className="yui-key-item"><span className="yui-key-icon">⌘</span><div className="yui-key-info"><strong>{k.name}</strong><code>{k.prefix}••••••••</code><small>Creada {new Date(k.createdAt).toLocaleDateString("es-PE")} · {k.lastUsedAt ? `Último uso ${new Date(k.lastUsedAt).toLocaleString("es-PE")}` : "Todavía no utilizada"}</small>{revealed?.id === k.id && <div className="mt-3 grid gap-2"><input className="input w-full font-mono text-xs" type="text" value={revealed.key} readOnly aria-label={`API Key de ${k.name}`} onFocus={(event) => event.currentTarget.select()} onClick={(event) => event.currentTarget.select()} /><button type="button" className="btn-primary w-fit" onClick={() => void copy(revealed.key)}>Copiar clave</button></div>}</div><span className="yui-key-status">ACTIVA</span><div className="flex flex-wrap gap-2"><button type="button" className="btn-ghost" disabled={revealBusy === k.id} onClick={() => void reveal(k)}>{revealBusy === k.id ? "Cargando…" : revealed?.id === k.id ? "Ocultar" : "Ver / copiar"}</button><button type="button" className="btn-danger" onClick={() => revoke(k)}>Revocar</button></div></li>)}
               </ul>
             )}
           </section>

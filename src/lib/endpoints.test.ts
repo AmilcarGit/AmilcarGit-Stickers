@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ENDPOINTS, buildUrl, curlFor, jsFor, pythonFor } from "./endpoints";
+import { ENDPOINTS, GROUPS, buildUrl, curlFor, jsFor, pythonFor } from "./endpoints";
 
 describe("catálogo de endpoints", () => {
   it("ids y rutas son únicos y todas cuelgan de /api/v1", () => {
@@ -15,6 +15,16 @@ describe("catálogo de endpoints", () => {
     expect(ENDPOINTS.some((e) => e.path === "/api/v1/tools/url-encode")).toBe(true);
     expect(ENDPOINTS.some((e) => e.path === "/api/v1/search/youtube")).toBe(true);
     expect(ENDPOINTS.some((e) => e.path === "/api/v1/search/pinterest")).toBe(true);
+  });
+
+  it("incluye los endpoints pensados para bots de WhatsApp", () => {
+    for (const path of ["/api/v1/sticker/text", "/api/v1/sticker/remove-bg", "/api/v1/weather", "/api/v1/exchange", "/api/v1/translate"]) {
+      expect(ENDPOINTS.some((e) => e.path === path)).toBe(true);
+    }
+  });
+
+  it("todo endpoint pertenece a un grupo conocido", () => {
+    expect(ENDPOINTS.every((e) => (GROUPS as readonly string[]).includes(e.group))).toBe(true);
   });
 
   it("buildUrl omite vacíos y codifica", () => {

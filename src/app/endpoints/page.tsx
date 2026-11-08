@@ -39,7 +39,7 @@ export default function EndpointsPage() {
   const [showFavorites, setShowFavorites] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showDocs, setShowDocs] = useState(true);
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(["Búsqueda"]);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(["Stickers", "Utilidades"]);
   const [showApiKey, setShowApiKey] = useState(false);
   const [jsonNotice, setJsonNotice] = useState("");
   const [duration, setDuration] = useState<number | null>(null);

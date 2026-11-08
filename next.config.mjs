@@ -10,6 +10,8 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   serverExternalPackages: ["sharp"],
+  // La fuente del texto a sticker debe viajar con la función serverless (Vercel no tiene fuentes del sistema).
+  outputFileTracingIncludes: { "/api/v1/sticker/text": ["./assets/fonts/**"] },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

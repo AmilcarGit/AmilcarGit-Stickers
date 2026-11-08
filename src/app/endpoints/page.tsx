@@ -121,7 +121,6 @@ export default function EndpointsPage() {
         body: file ?? undefined,
       });
       const elapsed = Math.round(performance.now() - startedAt);
-      setDuration(elapsed);
       const remaining = res.headers.get("x-ratelimit-remaining");
       const contentType = res.headers.get("content-type") ?? "";
       const isDownload = contentType.startsWith("image/") || res.headers.has("content-disposition");
@@ -130,7 +129,8 @@ export default function EndpointsPage() {
       if (isDownload) {
         if (!res.ok) {
           const message = await res.text();
-          return setResult({ kind: "error", message: message || "La API no pudo procesar la solicitud." });
+          return setDownloadProgress(null);
+          setResult({ kind: "error", message: message || "La API no pudo procesar la solicitud." });
         }
         const chunks: BlobPart[] = [];
         let loaded = 0;
@@ -145,6 +145,8 @@ export default function EndpointsPage() {
           }
         }
         const blob = new Blob(chunks, { type: contentType || "application/octet-stream" });
+        const elapsed = Math.round(performance.now() - startedAt);
+        setDuration(elapsed);
         const url = URL.createObjectURL(blob);
         lastBlob.current = url;
         const filename = filenameFrom(res.headers.get("content-disposition")) || res.headers.get("x-file-name") || "resultado";
@@ -156,6 +158,8 @@ export default function EndpointsPage() {
         setHistory((current) => [{ id: selected.id + "-" + Date.now(), endpointId: selected.id, path: selected.path, method: selected.method, status: res.status, duration: elapsed, at: Date.now(), ok: res.ok }, ...current].slice(0, 20));
       } else {
         const raw = await res.text();
+        const elapsed = Math.round(performance.now() - startedAt);
+        setDuration(elapsed);
         let formatted = raw;
         let stickers: StickerItem[] | undefined;
         try {
@@ -331,7 +335,7 @@ export default function EndpointsPage() {
                 {result.kind === "file" && (
                   <div className="rounded-xl border border-line bg-surface2 p-4">
                     <p className="text-sm font-semibold">Archivo preparado: {result.filename}</p>
-                    <p className="mt-1 text-xs text-muted">Tamaño: {(new Blob([]).size + (downloadProgress?.loaded ?? 0) / 1048576).toFixed(2)} MB</p>
+                    <p className="mt-1 text-xs text-muted">Tamaño: {((downloadProgress?.loaded ?? 0) / 1048576).toFixed(2)} MB</p>
                     <a href={result.url} download={result.filename} className="btn-primary mt-3 inline-flex">Descargar archivo</a>
                   </div>
                 )}

@@ -225,8 +225,10 @@ export default function EndpointsPage() {
                     {param.options.map((option) => <option key={option}>{option}</option>)}
                   </select>
                 ) : (
-                  <textarea id={"p-" + param.name} className="input min-h-20 font-mono text-sm" value={values[param.name] ?? ""} onChange={(e) => setValues((current) => ({ ...current, [param.name]: e.target.value }))} />
-                  {param.name === "text" && (values[param.name] ?? "").trim().startsWith("{") && <div className="mt-2 flex flex-wrap gap-2"><button type="button" className="btn-secondary" onClick={() => formatJsonParam(param.name)}>Formatear / validar JSON</button>{jsonNotice && <span className="text-xs text-muted">{jsonNotice}</span>}</div>}
+                  <>
+                    <textarea id={"p-" + param.name} className="input min-h-20 font-mono text-sm" value={values[param.name] ?? ""} onChange={(e) => setValues((current) => ({ ...current, [param.name]: e.target.value }))} />
+                    {param.name === "text" && (values[param.name] ?? "").trim().startsWith("{") && <div className="mt-2 flex flex-wrap gap-2"><button type="button" className="btn-secondary" onClick={() => formatJsonParam(param.name)}>Formatear / validar JSON</button>{jsonNotice && <span className="text-xs text-muted">{jsonNotice}</span>}</div>}
+                  </>
                 )}
               </div>
             ))}

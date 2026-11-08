@@ -153,7 +153,7 @@ export async function searchPinterest(f: Fetcher, query: string, limit: number) 
 
   // Fallback HTML: conserva solo pares de enlaces públicos de Pin e imágenes alojadas en pinimg.com.
   const ids = [...html.matchAll(/\\/pin\\/(\\d+)\\//g)].map((match) => match[1]);
-  const images = [...html.matchAll(/https?:\\/\\/i\\.pinimg\\.com\\/[^"\\\\\\s]+/g)].map((match) => match[0].replace(/\\\\u002F/g, "/").replace(/\\\\u003D/g, "="));
+  const images = [...html.matchAll(/https?:\/\/i\.pinimg\.com\/[^"\\\s]+/g)].map((match) => match[0].replace(/\\u002F/g, "/").replace(/\\u003D/g, "="));
   const fallback = [...new Map(ids.map((id, index) => [id, {
     id, title: null, image: images[index] ?? null, url: `https://www.pinterest.com/pin/${id}/`,
   }])).values()];

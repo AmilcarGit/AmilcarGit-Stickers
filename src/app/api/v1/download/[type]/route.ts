@@ -123,7 +123,9 @@ function pinterestMediaUrl(html: string): { url: string; type: "image" | "video"
     try {
       const url = new URL(raw.replace(/&amp;/g, "&"));
       if (url.protocol === "https:" && (url.hostname === "pinimg.com" || url.hostname.endsWith(".pinimg.com"))) return { url: url.toString(), type: item.type };
-    } catch {}
+    } catch {
+      continue;
+    }
   }
   return null;
 }
@@ -175,7 +177,7 @@ export const GET = v1With<{ type: string }>(async ({ url }, { type }) => {
       throw new AppError(400, "Solo se aceptan enlaces de Pinterest.");
     }
     const page = await timedFetch(pageUrl.toString(), { redirect: "follow", headers: { "user-agent": "Mozilla/5.0 (compatible; YuiAPI/1.0)" } });
-    if (!page.ok || !new URL(page.url).hostname.endsWith("pinterest.com")) throw new AppError(502, "No se pudo abrir el Pin público.");
+    if (!page.ok || !["pinterest.com", "www.pinterest.com", "es.pinterest.com", "id.pinterest.com"].includes(new URL(page.url).hostname)) throw new AppError(502, "No se pudo abrir el Pin público.");
     const html = await page.text();
     const media = pinterestMediaUrl(html);
     if (!media) throw new AppError(422, "Pinterest no expuso un enlace directo de imagen o video para este Pin.");

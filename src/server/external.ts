@@ -169,7 +169,9 @@ export async function searchPinterest(f: Fetcher, query: string, limit: number) 
       board: str(board.name),
     }];
   });
-  const unique = [...new Map(results.map((item) => [item.id, item])).values()];
+  // Quita repetidos conservando la primera aparición de cada id.
+  const seen = new Set<string>();
+  const unique = results.filter((item) => (seen.has(item.id) ? false : (seen.add(item.id), true)));
   return unique.slice(0, limit);
 }
 

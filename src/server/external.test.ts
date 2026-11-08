@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanLimit, cleanQuery, searchAnime, searchBooks, searchGiphyStickers, searchMusic, searchOpenImages, searchWikipedia, type Fetcher } from "./external";
+import { cleanLimit, cleanQuery, searchAnime, searchBooks, searchGiphyStickers, searchMusic, searchOpenImages, searchPinterest, searchWikipedia, type Fetcher } from "./external";
 
 const jsonFetch =
   (body: unknown, status = 200, seen: string[] = []): Fetcher =>
@@ -44,6 +44,57 @@ describe("proveedores externos", () => {
     expect(seen[0]).toContain("q=gato%20%26%20perro");
     expect(seen[0]).toContain("limit=5");
     expect(out).toEqual([{ id: "a1", title: "Gato", gif: "https://m/a.gif", webp: "https://m/a.webp", page: "https://giphy.com/a1" }]);
+  });
+
+  it("Pinterest (PinAPI): consulta sin clave y normaliza los Pines", async () => {
+    const seen: string[] = [];
+    const out = await searchPinterest(
+      jsonFetch({
+        items: [{
+          id: "123456",
+          title: "Anime",
+          description: "Ilustración",
+          image: "https://i.pinimg.com/originals/a.jpg",
+          link: "https://example.com",
+          domain: "example.com",
+          pinner: { username: "creador", full_name: "Creador" },
+          board: { name: "Favoritos" },
+        }],
+      }, 200, seen),
+      "anime & manga",
+      5,
+    );
+    expect(seen[0]).toContain("https://pinapi.kreatix.dev/v1/search?");
+    expect(seen[0]).toContain("q=anime%20%26%20manga");
+    expect(seen[0]).toContain("scope=pins");
+    expect(seen[0]).toContain("page_size=5");
+    expect(out[0]).toEqual({
+      id: "123456",
+      title: "Anime",
+      description: "Ilustración",
+      image: "https://i.pinimg.com/originals/a.jpg",
+      url: "https://www.pinterest.com/pin/123456/",
+      link: "https://example.com",
+      domain: "example.com",
+      creator: "Creador",
+      board: "Favoritos",
+    });
+  });
+
+  it("Pinterest (PinAPI): admite variantes de imagen y respeta respuestas vacías y límites", async () => {
+    const out = await searchPinterest(
+      jsonFetch({ results: [
+        { id: "1", images: { orig: { url: "https://i/orig.jpg" } } },
+        { id: "2", images: { "736x": { url: "https://i/736.jpg" } } },
+        { id: "1", image: "https://i/duplicate.jpg" },
+      ] }),
+      "gatos",
+      2,
+    );
+    expect(out).toHaveLength(2);
+    expect(out[0].image).toBe("https://i/orig.jpg");
+    expect(await searchPinterest(jsonFetch({ items: [] }), "sin resultados", 5)).toEqual([]);
+    expect((await fails(searchPinterest(jsonFetch({}, 429), "gato", 5))).status).toBe(503);
   });
 
   it("música (iTunes): normaliza y marca la vista previa", async () => {

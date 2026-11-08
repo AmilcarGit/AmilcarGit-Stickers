@@ -4,6 +4,7 @@ import { AppError } from "./errors";
 export type Fetcher = typeof fetch;
 
 const MAX_BODY = 1_500_000;
+const MAX_HTML_BODY = 8_000_000;
 const UA = "YuiApi/1.0 (+https://yuiapi.vercel.app)";
 
 async function getJson(fetcher: Fetcher, url: string, allowNotFound = false): Promise<unknown> {
@@ -57,7 +58,7 @@ async function getHtml(fetcher: Fetcher, url: string): Promise<string> {
   if (response.status === 429) throw new AppError(503, "El servicio de búsqueda está limitando las consultas. Inténtalo más tarde.");
   if (!response.ok) throw new AppError(502, "El servicio de búsqueda devolvió un error.");
   const html = await response.text();
-  if (html.length > MAX_BODY) throw new AppError(502, "La respuesta del servicio de búsqueda es demasiado grande.");
+  if (html.length > MAX_HTML_BODY) throw new AppError(502, "La página de búsqueda de YouTube supera el límite de tamaño permitido.");
   return html;
 }
 

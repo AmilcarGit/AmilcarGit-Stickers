@@ -210,7 +210,7 @@ export default function EndpointsPage() {
                   <button type="button" aria-label="Alternar favorito" onClick={() => toggleFavorite(endpoint.id)} className={"px-2 py-1 text-sm " + (favorites.includes(endpoint.id) ? "text-amber-400" : "text-muted")}>{favorites.includes(endpoint.id) ? "★" : "☆"}</button>
                 </div>
               </li>)}</ul>}
-              {group === "Descargas y archivos" && expanded && <p className="border-t border-line px-3 py-2 text-[10px] leading-relaxed text-muted">Actualmente procesa archivos que adjuntas. Los conectores de YouTube y Pinterest todavía no están disponibles; no se presentan como descargadores hasta contar con una integración permitida y verificable.</p>}
+              {group === "Descargas y archivos" && expanded && <p className="border-t border-line px-3 py-2 text-[10px] leading-relaxed text-muted">Incluye descargas de YouTube (audio y video) y resolución de medios públicos de Pinterest. La disponibilidad depende del proveedor externo y de que el Pin exponga un archivo multimedia directo.</p>}
             </section>;
           })}
           {!filteredEndpoints.length && <p className="rounded-xl border border-line p-3 text-xs text-muted">No hay endpoints que coincidan.</p>}

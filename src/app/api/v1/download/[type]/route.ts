@@ -28,8 +28,8 @@ function safeFilename(value: string, fallback: string): string {
   return (clean || fallback).replace(/\.(mp3|mp4|webm|m4a)$/i, "");
 }
 
-async function timedFetch(input: string | URL, init: RequestInit = {}): Promise<Response> {
-  return fetch(input, { ...init, cache: "no-store", signal: AbortSignal.timeout(REQUEST_TIMEOUT) });
+async function timedFetch(input: string | URL, init: RequestInit = {}, timeout = REQUEST_TIMEOUT): Promise<Response> {
+  return fetch(input, { ...init, cache: "no-store", signal: AbortSignal.timeout(timeout) });
 }
 
 function decryptSaveTube(encoded: string): { title?: string; duration?: number; thumbnail?: string; key: string } {
@@ -143,7 +143,7 @@ function attachment(response: Response, filename: string, contentType: string): 
 }
 
 async function streamMedia(url: string, name: string, expected: "audio" | "video" | "pinterest"): Promise<Response> {
-  const response = await timedFetch(url, { headers: { "user-agent": "Mozilla/5.0 (compatible; YuiAPI/1.0)" } });
+  const response = await timedFetch(url, { headers: { "user-agent": "Mozilla/5.0 (compatible; YuiAPI/1.0)" } }, 55_000);
   if (!response.ok) throw new AppError(502, "El servidor de archivos no pudo entregar la descarga.");
   const type = (response.headers.get("content-type") || "application/octet-stream").split(";")[0].toLowerCase();
   const allowed = expected === "audio" ? type.startsWith("audio/") || type === "application/octet-stream"

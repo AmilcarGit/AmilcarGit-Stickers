@@ -7,7 +7,7 @@ export const maxDuration = 60;
 export const OPTIONS = preflight;
 
 const SAVE_TUBE_KEY = process.env.SAVETUBE_KEY || "C5D58EF67A7584E4A29F6C35BBC4EB12";
-const MAX_DOWNLOAD = 100 * 1024 * 1024;
+const MAX_DOWNLOAD = 800 * 1024 * 1024;
 const REQUEST_TIMEOUT = 18_000;
 
 function youtubeId(raw: string): string | null {
@@ -133,7 +133,7 @@ function pinterestMediaUrl(html: string): { url: string; type: "image" | "video"
 function attachment(response: Response, filename: string, contentType: string): Response {
   if (!response.body) throw new AppError(502, "El proveedor devolvió un archivo vacío.");
   const length = Number(response.headers.get("content-length") || "0");
-  if (length > MAX_DOWNLOAD) throw new AppError(413, "El archivo supera el límite de 100 MB.");
+  if (length > MAX_DOWNLOAD) throw new AppError(413, "El archivo supera el límite configurado de 800 MB.");
   const headers = new Headers({
     "content-type": contentType,
     "content-disposition": `attachment; filename="${filename}"`,

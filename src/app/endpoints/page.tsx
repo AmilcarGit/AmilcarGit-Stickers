@@ -33,6 +33,7 @@ export default function EndpointsPage() {
   const [copied, setCopied] = useState(false);
   const [search, setSearch] = useState("");
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [storageReady, setStorageReady] = useState(false);
   const [history, setHistory] = useState<TestHistory[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -54,10 +55,11 @@ export default function EndpointsPage() {
       setFavorites(JSON.parse(localStorage.getItem("yuiapi:endpoint-favorites") || "[]") as string[]);
       setHistory(JSON.parse(localStorage.getItem("yuiapi:endpoint-history") || "[]") as TestHistory[]);
     } catch { setFavorites([]); setHistory([]); }
+    finally { setStorageReady(true); }
   }, []);
 
-  useEffect(() => { localStorage.setItem("yuiapi:endpoint-favorites", JSON.stringify(favorites)); }, [favorites]);
-  useEffect(() => { localStorage.setItem("yuiapi:endpoint-history", JSON.stringify(history.slice(0, 20))); }, [history]);
+  useEffect(() => { if (storageReady) localStorage.setItem("yuiapi:endpoint-favorites", JSON.stringify(favorites)); }, [favorites, storageReady]);
+  useEffect(() => { if (storageReady) localStorage.setItem("yuiapi:endpoint-history", JSON.stringify(history.slice(0, 20))); }, [history, storageReady]);
 
   const filteredEndpoints = useMemo(() => ENDPOINTS.filter((endpoint) => {
     const matches = (endpoint.path + " " + endpoint.what + " " + endpoint.group + " " + endpoint.id).toLowerCase().includes(search.toLowerCase());

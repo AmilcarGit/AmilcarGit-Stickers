@@ -1,11 +1,11 @@
 import { AppError } from "@/server/errors";
-import { cleanLimit, cleanQuery, searchAnime, searchBooks, searchMusic, searchOpenImages, searchWikipedia, searchShows, searchCharacters, searchCountries, searchPapers, searchEbooks } from "@/server/external";
+import { cleanLimit, cleanQuery, searchAnime, searchBooks, searchMusic, searchOpenImages, searchWikipedia, searchShows, searchCharacters, searchCountries, searchPapers, searchEbooks, searchYouTube, searchPinterest } from "@/server/external";
 import { preflight, v1With } from "@/server/v1";
 
 export const runtime = "nodejs";
 export const OPTIONS = preflight;
 
-const KINDS = ["music", "anime", "wiki", "books", "images", "shows", "characters", "countries", "papers", "ebooks"] as const;
+const KINDS = ["music", "anime", "wiki", "books", "images", "shows", "characters", "countries", "papers", "ebooks", "youtube", "pinterest"] as const;
 
 /** Búsqueda: /search/music | anime | wiki | books | images | shows | characters | countries | papers | ebooks con ?q= y ?limit=. */
 export const GET = v1With<{ kind: string }>(async ({ url }, { kind }) => {
@@ -32,6 +32,10 @@ export const GET = v1With<{ kind: string }>(async ({ url }, { kind }) => {
       return { query, results: await searchPapers(fetch, query, limit) };
     case "ebooks":
       return { query, results: await searchEbooks(fetch, query, limit) };
+    case "youtube":
+      return { query, results: await searchYouTube(fetch, query, limit) };
+    case "pinterest":
+      return { query, results: await searchPinterest(fetch, query, limit) };
     default:
       throw new AppError(404, `Búsqueda desconocida. Usa: ${KINDS.join(", ")}.`);
   }

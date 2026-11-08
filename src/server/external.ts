@@ -42,6 +42,125 @@ export function cleanLimit(raw: string | null, def = 10, max = 25): number {
   return Number.isFinite(n) ? Math.min(max, Math.max(1, n)) : def;
 }
 
+
+async function getHtml(fetcher: Fetcher, url: string): Promise<string> {
+  let response: Response;
+  try {
+    response = await fetcher(url, {
+      headers: { "user-agent": "Mozilla/5.0 (compatible; YuiAPI/1.0)", accept: "text/html,application/xhtml+xml" },
+      signal: AbortSignal.timeout(10_000),
+      redirect: "follow",
+    });
+  } catch {
+    throw new AppError(502, "El servicio de búsqueda no respondió a tiempo. Inténtalo otra vez.");
+  }
+  if (response.status === 429) throw new AppError(503, "El servicio de búsqueda está limitando las consultas. Inténtalo más tarde.");
+  if (!response.ok) throw new AppError(502, "El servicio de búsqueda devolvió un error.");
+  const html = await response.text();
+  if (html.length > MAX_BODY) throw new AppError(502, "La respuesta del servicio de búsqueda es demasiado grande.");
+  return html;
+}
+
+function parseEmbeddedJson(html: string, marker: string): unknown | null {
+  const markerIndex = html.indexOf(marker);
+  if (markerIndex < 0) return null;
+  const start = html.indexOf("{", markerIndex + marker.length);
+  if (start < 0) return null;
+  let depth = 0;
+  let quoted = false;
+  let escaped = false;
+  for (let i = start; i < html.length; i++) {
+    const char = html[i];
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (char === "\\\\") escaped = true;
+      else if (char === '"') quoted = false;
+      continue;
+    }
+    if (char === '"') quoted = true;
+    else if (char === "{") depth++;
+    else if (char === "}" && --depth === 0) {
+      try { return JSON.parse(html.slice(start, i + 1)); } catch { return null; }
+    }
+  }
+  return null;
+}
+
+function collectObjects(root: unknown, predicate: (value: Record<string, unknown>) => boolean, max = 30_000) {
+  const found: Record<string, unknown>[] = [];
+  const stack: unknown[] = [root];
+  let visited = 0;
+  while (stack.length && visited++ < max) {
+    const value = stack.pop();
+    if (!value || typeof value !== "object") continue;
+    if (Array.isArray(value)) stack.push(...value);
+    else {
+      const record = value as Record<string, unknown>;
+      if (predicate(record)) found.push(record);
+      stack.push(...Object.values(record));
+    }
+  }
+  return found;
+}
+
+/** Búsqueda pública de YouTube. Los enlaces apuntan al video original; no descarga ni reproduce contenido protegido. */
+export async function searchYouTube(f: Fetcher, query: string, limit: number) {
+  const html = await getHtml(f, `https://www.youtube.com/results?search_query=${q(query)}`);
+  const data = parseEmbeddedJson(html, "var ytInitialData =") ?? parseEmbeddedJson(html, "ytInitialData =");
+  if (!data) throw new AppError(502, "YouTube no entregó resultados de búsqueda. Inténtalo más tarde.");
+  const videos = collectObjects(data, (item) => typeof item.videoId === "string" && !!item.title && !!item.thumbnail)
+    .filter((item) => {
+      const badges = arr(item.badges).map((badge) => JSON.stringify(badge)).join(" ");
+      return !badges.includes("LIVE_NOW");
+    });
+  const seen = new Set<string>();
+  return videos.flatMap((item) => {
+    const id = str(item.videoId);
+    if (!id || seen.has(id)) return [];
+    seen.add(id);
+    const titleNode = obj(item.title);
+    const title = arr(titleNode.runs).map((part) => str(obj(part).text)).filter(Boolean).join("") || str(titleNode.simpleText);
+    const thumbs = arr(obj(item.thumbnail).thumbnails);
+    const thumbnail = str(obj(thumbs[thumbs.length - 1]).url);
+    const owner = obj(item.ownerText);
+    const channel = arr(owner.runs).map((part) => str(obj(part).text)).filter(Boolean).join("") || str(owner.simpleText);
+    const duration = str(obj(item.lengthText).simpleText);
+    const views = str(obj(item.viewCountText).simpleText);
+    const published = str(obj(item.publishedTimeText).simpleText);
+    return [{ id, title, channel, duration, views, published, thumbnail, url: `https://www.youtube.com/watch?v=${id}` }];
+  }).slice(0, limit);
+}
+
+/** Búsqueda pública de Pinterest. Los resultados enlazan al Pin; disponibilidad de metadatos depende de Pinterest. */
+export async function searchPinterest(f: Fetcher, query: string, limit: number) {
+  const html = await getHtml(f, `https://www.pinterest.com/search/pins/?q=${q(query)}`);
+  const pins = collectObjects(parseEmbeddedJson(html, "window.__PWS_DATA__ =") ?? parseEmbeddedJson(html, "PWS_DATA =") ?? {}, (item) => {
+    const id = str(item.id) ?? str(item.pin_id);
+    const images = obj(item.images);
+    return !!id && !!(str(item.title) || str(item.grid_title) || Object.keys(images).length);
+  });
+  const results = pins.flatMap((item) => {
+    const id = str(item.id) ?? str(item.pin_id);
+    if (!id || !/^\\d+$/.test(id)) return [];
+    const images = obj(item.images);
+    const image = obj(images.orig).url ?? obj(images["736x"]).url ?? obj(images["474x"]).url;
+    const imageUrl = str(image);
+    const title = str(item.title) ?? str(item.grid_title) ?? str(item.description);
+    return [{ id, title, image: imageUrl, url: `https://www.pinterest.com/pin/${id}/` }];
+  });
+  const unique = [...new Map(results.map((item) => [item.id, item])).values()];
+  if (unique.length) return unique.slice(0, limit);
+
+  // Fallback HTML: conserva solo pares de enlaces públicos de Pin e imágenes alojadas en pinimg.com.
+  const ids = [...html.matchAll(/\\/pin\\/(\\d+)\\//g)].map((match) => match[1]);
+  const images = [...html.matchAll(/https?:\\?\\?\\/\\/i.pinimg.com\\/[^"\\\\ ]+/g)].map((match) => match[0].replace(/\\\\u002F/g, "/").replace(/\\\\u003D/g, "="));
+  const fallback = [...new Map(ids.map((id, index) => [id, {
+    id, title: null, image: images[index] ?? null, url: `https://www.pinterest.com/pin/${id}/`,
+  }])).values()];
+  if (!fallback.length) throw new AppError(502, "Pinterest no expuso resultados públicos para esta búsqueda. Prueba con otras palabras.");
+  return fallback.slice(0, limit);
+}
+
 /** Stickers de Giphy. Requiere tu propia clave (GIPHY_API_KEY); Giphy pide mostrar «Powered by GIPHY». */
 export async function searchGiphyStickers(f: Fetcher, apiKey: string | undefined, query: string, limit: number) {
   if (!apiKey) throw new AppError(503, "La búsqueda en Giphy no está configurada en el servidor.");

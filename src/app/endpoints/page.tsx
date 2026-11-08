@@ -14,6 +14,7 @@ type Result =
   | { kind: "error"; message: string };
 
 type CodeTab = "JavaScript" | "Python" | "cURL";
+type DownloadProgress = { status: number; loaded: number; total: number | null; phase: "receiving" | "ready" };
 type TestHistory = { id: string; endpointId: string; path: string; method: string; status: number | null; duration: number; at: number; ok: boolean };
 
 function filenameFrom(header: string | null): string {
@@ -42,6 +43,7 @@ export default function EndpointsPage() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [jsonNotice, setJsonNotice] = useState("");
   const [duration, setDuration] = useState<number | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
   const lastBlob = useRef<string | null>(null);
   const base = typeof window === "undefined" ? "" : window.location.origin;
 
@@ -107,6 +109,7 @@ export default function EndpointsPage() {
     setBusy(true);
     setResult(null);
     setDuration(null);
+    setDownloadProgress(null);
     const startedAt = performance.now();
     try {
       const res = await fetch(buildUrl(selected, values), {
@@ -121,12 +124,27 @@ export default function EndpointsPage() {
       setDuration(elapsed);
       const remaining = res.headers.get("x-ratelimit-remaining");
       const contentType = res.headers.get("content-type") ?? "";
-      if (contentType.startsWith("image/") || res.headers.has("content-disposition")) {
+      const isDownload = contentType.startsWith("image/") || res.headers.has("content-disposition");
+      const declaredSize = Number(res.headers.get("content-length") || "0");
+      if (isDownload) setDownloadProgress({ status: res.status, loaded: 0, total: declaredSize > 0 ? declaredSize : null, phase: "receiving" });
+      if (isDownload) {
         if (!res.ok) {
           const message = await res.text();
           return setResult({ kind: "error", message: message || "La API no pudo procesar la solicitud." });
         }
-        const blob = await res.blob();
+        const chunks: BlobPart[] = [];
+        let loaded = 0;
+        if (res.body) {
+          const reader = res.body.getReader();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            loaded += value.byteLength;
+            setDownloadProgress({ status: res.status, loaded, total: declaredSize > 0 ? declaredSize : null, phase: "receiving" });
+          }
+        }
+        const blob = new Blob(chunks, { type: contentType || "application/octet-stream" });
         const url = URL.createObjectURL(blob);
         lastBlob.current = url;
         const filename = filenameFrom(res.headers.get("content-disposition")) || res.headers.get("x-file-name") || "resultado";
@@ -134,6 +152,7 @@ export default function EndpointsPage() {
           kind: contentType.startsWith("image/") ? "image" : "file",
           status: res.status, url, filename, remaining,
         });
+        setDownloadProgress({ status: res.status, loaded: blob.size, total: declaredSize > 0 ? declaredSize : blob.size, phase: "ready" });
         setHistory((current) => [{ id: selected.id + "-" + Date.now(), endpointId: selected.id, path: selected.path, method: selected.method, status: res.status, duration: elapsed, at: Date.now(), ok: res.ok }, ...current].slice(0, 20));
       } else {
         const raw = await res.text();
@@ -154,6 +173,7 @@ export default function EndpointsPage() {
         setHistory((current) => [{ id: selected.id + "-" + Date.now(), endpointId: selected.id, path: selected.path, method: selected.method, status: res.status, duration: elapsed, at: Date.now(), ok: res.ok }, ...current].slice(0, 20));
       }
     } catch {
+      setDownloadProgress(null);
       setResult({ kind: "error", message: "No se pudo conectar con la API." });
       const elapsed = Math.round(performance.now() - startedAt);
       setDuration(elapsed);
@@ -288,6 +308,11 @@ export default function EndpointsPage() {
 
           <div aria-live="polite" className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="label !mb-0">Respuesta del servidor</h3>{duration !== null && <span className="chip text-xs">⏱ {duration} ms</span>}</div>
+            {downloadProgress && <div className="rounded-xl border border-line bg-surface2 p-3 space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><strong>HTTP {downloadProgress.status}</strong><span className="text-muted">{downloadProgress.phase === "ready" ? "Archivo recibido" : "Recibiendo archivo…"} · {(downloadProgress.loaded / 1048576).toFixed(2)} MB{downloadProgress.total !== null ? " / " + (downloadProgress.total / 1048576).toFixed(2) + " MB" : ""}</span></div>
+              <div className="h-2 overflow-hidden rounded-full bg-surface"><div className="h-full rounded-full bg-brand transition-[width]" style={{ width: downloadProgress.phase === "ready" ? "100%" : downloadProgress.total ? Math.min(99, downloadProgress.loaded / downloadProgress.total * 100) + "%" : "35%" }} /></div>
+              <p className="text-[11px] text-muted">{downloadProgress.phase === "ready" ? "La descarga está lista. Pulsa el botón para guardar el archivo." : downloadProgress.total ? Math.min(99, Math.round(downloadProgress.loaded / downloadProgress.total * 100)) + "% completado" : "El servidor no informó el tamaño total; se muestra el volumen recibido."}</p>
+            </div> }
             {result?.kind === "error" && <p className="rounded-xl border border-danger/50 bg-danger/10 p-3 text-sm text-danger" role="alert">{result.message}</p>}
             {result && result.kind !== "error" && (
               <div className="space-y-3">
@@ -306,6 +331,7 @@ export default function EndpointsPage() {
                 {result.kind === "file" && (
                   <div className="rounded-xl border border-line bg-surface2 p-4">
                     <p className="text-sm font-semibold">Archivo preparado: {result.filename}</p>
+                    <p className="mt-1 text-xs text-muted">Tamaño: {(new Blob([]).size + (downloadProgress?.loaded ?? 0) / 1048576).toFixed(2)} MB</p>
                     <a href={result.url} download={result.filename} className="btn-primary mt-3 inline-flex">Descargar archivo</a>
                   </div>
                 )}

@@ -131,34 +131,46 @@ export async function searchYouTube(f: Fetcher, query: string, limit: number) {
   }).slice(0, limit);
 }
 
-/** Búsqueda pública de Pinterest. Los resultados enlazan al Pin; disponibilidad de metadatos depende de Pinterest. */
+/** Búsqueda pública de Pinterest mediante PinAPI. No requiere clave; respeta su límite público por IP. */
 export async function searchPinterest(f: Fetcher, query: string, limit: number) {
-  const html = await getHtml(f, `https://www.pinterest.com/search/pins/?q=${q(query)}`);
-  const pins = collectObjects(parseEmbeddedJson(html, "window.__PWS_DATA__ =") ?? parseEmbeddedJson(html, "PWS_DATA =") ?? {}, (item) => {
-    const id = str(item.id) ?? str(item.pin_id);
-    const images = obj(item.images);
-    return !!id && !!(str(item.title) || str(item.grid_title) || Object.keys(images).length);
-  });
-  const results = pins.flatMap((item) => {
-    const id = str(item.id) ?? str(item.pin_id);
-    if (!id || !/^\\d+$/.test(id)) return [];
-    const images = obj(item.images);
-    const image = obj(images.orig).url ?? obj(images["736x"]).url ?? obj(images["474x"]).url;
-    const imageUrl = str(image);
-    const title = str(item.title) ?? str(item.grid_title) ?? str(item.description);
-    return [{ id, title, image: imageUrl, url: `https://www.pinterest.com/pin/${id}/` }];
+  const payload = await getJson(
+    f,
+    `https://pinapi.kreatix.dev/v1/search?q=${q(query)}&scope=pins&page_size=${limit}`,
+  );
+  const root = obj(payload);
+  const rawItems = Array.isArray(payload)
+    ? payload
+    : arr(root.items).length
+      ? arr(root.items)
+      : arr(root.results).length
+        ? arr(root.results)
+        : arr(root.pins);
+  const results = rawItems.flatMap((raw) => {
+    const pin = obj(raw);
+    const id = str(pin.id) ?? str(pin.pin_id);
+    if (!id) return [];
+    const images = obj(pin.images);
+    const image = str(pin.image)
+      ?? str(obj(images.orig).url)
+      ?? str(obj(images["736x"]).url)
+      ?? str(obj(images["236x"]).url)
+      ?? str(obj(images["474x"]).url);
+    const pinner = obj(pin.pinner);
+    const board = obj(pin.board);
+    return [{
+      id,
+      title: str(pin.title),
+      description: str(pin.description),
+      image,
+      url: `https://www.pinterest.com/pin/${encodeURIComponent(id)}/`,
+      link: str(pin.link),
+      domain: str(pin.domain),
+      creator: str(pinner.full_name) ?? str(pinner.username),
+      board: str(board.name),
+    }];
   });
   const unique = [...new Map(results.map((item) => [item.id, item])).values()];
-  if (unique.length) return unique.slice(0, limit);
-
-  // Fallback HTML: conserva solo pares de enlaces públicos de Pin e imágenes alojadas en pinimg.com.
-  const ids = [...html.matchAll(/\/pin\/(\d+)\//g)].map((match) => match[1]);
-  const images = [...html.matchAll(/https?:\/\/i\.pinimg\.com\/[^"\\\s]+/g)].map((match) => match[0].replace(/\\u002F/g, "/").replace(/\\u003D/g, "="));
-  const fallback = [...new Map(ids.map((id, index) => [id, {
-    id, title: null, image: images[index] ?? null, url: `https://www.pinterest.com/pin/${id}/`,
-  }])).values()];
-  if (!fallback.length) throw new AppError(502, "Pinterest no expuso resultados públicos para esta búsqueda. Prueba con otras palabras.");
-  return fallback.slice(0, limit);
+  return unique.slice(0, limit);
 }
 
 /** Stickers de Giphy. Requiere tu propia clave (GIPHY_API_KEY); Giphy pide mostrar «Powered by GIPHY». */

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/Providers";
 import { ENDPOINTS, GROUPS, buildUrl, curlFor, jsFor, pythonFor, type Endpoint } from "@/lib/endpoints";
 
@@ -14,6 +14,7 @@ type Result =
   | { kind: "error"; message: string };
 
 type CodeTab = "JavaScript" | "Python" | "cURL";
+type TestHistory = { id: string; endpointId: string; path: string; method: string; status: number | null; duration: number; at: number; ok: boolean };
 
 function filenameFrom(header: string | null): string {
   const match = header?.match(/filename="?([^";]+)"?/i);
@@ -30,6 +31,15 @@ export default function EndpointsPage() {
   const [result, setResult] = useState<Result | null>(null);
   const [codeTab, setCodeTab] = useState<CodeTab>("JavaScript");
   const [copied, setCopied] = useState(false);
+  const [search, setSearch] = useState("");
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [history, setHistory] = useState<TestHistory[]>([]);
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showDocs, setShowDocs] = useState(true);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [jsonNotice, setJsonNotice] = useState("");
+  const [duration, setDuration] = useState<number | null>(null);
   const lastBlob = useRef<string | null>(null);
   const base = typeof window === "undefined" ? "" : window.location.origin;
 
@@ -38,6 +48,30 @@ export default function EndpointsPage() {
     setFile(null);
     setResult(null);
   }, [selected]);
+
+  useEffect(() => {
+    try {
+      setFavorites(JSON.parse(localStorage.getItem("yuiapi:endpoint-favorites") || "[]") as string[]);
+      setHistory(JSON.parse(localStorage.getItem("yuiapi:endpoint-history") || "[]") as TestHistory[]);
+    } catch { setFavorites([]); setHistory([]); }
+  }, []);
+
+  useEffect(() => { localStorage.setItem("yuiapi:endpoint-favorites", JSON.stringify(favorites)); }, [favorites]);
+  useEffect(() => { localStorage.setItem("yuiapi:endpoint-history", JSON.stringify(history.slice(0, 20))); }, [history]);
+
+  const filteredEndpoints = useMemo(() => ENDPOINTS.filter((endpoint) => {
+    const matches = (endpoint.path + " " + endpoint.what + " " + endpoint.group + " " + endpoint.id).toLowerCase().includes(search.toLowerCase());
+    return matches && (!showFavorites || favorites.includes(endpoint.id));
+  }), [search, showFavorites, favorites]);
+
+  const toggleFavorite = (id: string) => setFavorites((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+
+  function formatJsonParam(name: string) {
+    try {
+      setValues((current) => ({ ...current, [name]: JSON.stringify(JSON.parse(current[name] ?? ""), null, 2) }));
+      setJsonNotice("JSON válido y formateado.");
+    } catch { setJsonNotice("JSON no válido. Revisa comillas, comas y llaves."); }
+  }
 
   useEffect(() => () => {
     if (lastBlob.current) URL.revokeObjectURL(lastBlob.current);
@@ -69,6 +103,8 @@ export default function EndpointsPage() {
     if (selected.body === "file" && !file) return setResult({ kind: "error", message: "Selecciona el archivo que quieres procesar." });
     setBusy(true);
     setResult(null);
+    setDuration(null);
+    const startedAt = performance.now();
     try {
       const res = await fetch(buildUrl(selected, values), {
         method: selected.method,
@@ -78,6 +114,8 @@ export default function EndpointsPage() {
         },
         body: file ?? undefined,
       });
+      const elapsed = Math.round(performance.now() - startedAt);
+      setDuration(elapsed);
       const remaining = res.headers.get("x-ratelimit-remaining");
       const contentType = res.headers.get("content-type") ?? "";
       if (contentType.startsWith("image/") || res.headers.has("content-disposition")) {
@@ -93,6 +131,7 @@ export default function EndpointsPage() {
           kind: contentType.startsWith("image/") ? "image" : "file",
           status: res.status, url, filename, remaining,
         });
+        setHistory((current) => [{ id: selected.id + "-" + Date.now(), endpointId: selected.id, path: selected.path, method: selected.method, status: res.status, duration: elapsed, at: Date.now(), ok: res.ok }, ...current].slice(0, 20));
       } else {
         const raw = await res.text();
         let formatted = raw;
@@ -109,9 +148,13 @@ export default function EndpointsPage() {
           // La respuesta no es JSON.
         }
         setResult({ kind: "json", status: res.status, text: formatted, remaining, stickers });
+        setHistory((current) => [{ id: selected.id + "-" + Date.now(), endpointId: selected.id, path: selected.path, method: selected.method, status: res.status, duration: elapsed, at: Date.now(), ok: res.ok }, ...current].slice(0, 20));
       }
     } catch {
       setResult({ kind: "error", message: "No se pudo conectar con la API." });
+      const elapsed = Math.round(performance.now() - startedAt);
+      setDuration(elapsed);
+      setHistory((current) => [{ id: selected.id + "-" + Date.now(), endpointId: selected.id, path: selected.path, method: selected.method, status: null, duration: elapsed, at: Date.now(), ok: false }, ...current].slice(0, 20));
     } finally {
       setBusy(false);
     }
@@ -119,43 +162,48 @@ export default function EndpointsPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-3xl font-bold">Explorador de endpoints</h1>
-        <p className="mt-1 text-muted">
-          Ejecuta solicitudes reales, inspecciona respuestas, previsualiza imágenes y descarga archivos.{" "}
-          {user ? <Link href="/dashboard" className="text-brand underline">Ir a mi panel</Link> : <Link href="/register" className="text-brand underline">Crea una cuenta gratis para obtener una clave</Link>}.
-        </p>
+      <header className="relative overflow-hidden rounded-3xl border border-brand/20 bg-gradient-to-br from-brand/10 via-surface to-accent/10 p-5 sm:p-7">
+        <p className="text-xs font-bold uppercase tracking-[.22em] text-brand">YuiAPI · Developer platform</p>
+        <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">API Explorer <span className="text-brand">Pro</span></h1>
+        <p className="mt-2 max-w-2xl text-sm text-muted">Explora, documenta y prueba endpoints desde un solo espacio. Favoritos e historial se guardan únicamente en este dispositivo.</p>
+        <div className="mt-4 flex flex-wrap gap-2 text-xs"><span className="chip">{ENDPOINTS.length} endpoints documentados</span><span className="chip">REST · JSON</span><span className="chip">JavaScript · Python · cURL</span></div>
+        <p className="mt-3 text-xs">{user ? <Link href="/dashboard" className="text-brand underline">Ir a mi panel</Link> : <Link href="/register" className="text-brand underline">Crear cuenta gratis</Link>}</p>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
-        <nav aria-label="Lista de endpoints" className="space-y-4">
-          {GROUPS.map((group) => (
-            <div key={group}>
+      <div className="grid gap-5 lg:grid-cols-[17rem_minmax(0,1fr)]">
+        <nav aria-label="Lista de endpoints" className="min-w-0 space-y-3">
+          <input aria-label="Buscar endpoints" value={search} onChange={(e) => setSearch(e.target.value)} className="input" placeholder="Buscar endpoint o ruta..." />
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setShowFavorites(false)} className={"btn-secondary " + (!showFavorites ? "border-brand text-brand" : "")}>Todos ({ENDPOINTS.length})</button>
+            <button type="button" onClick={() => setShowFavorites(true)} className={"btn-secondary " + (showFavorites ? "border-brand text-brand" : "")}>★ Favoritos ({favorites.length})</button>
+          </div>
+          {GROUPS.map((group) => {
+            const items = filteredEndpoints.filter((endpoint) => endpoint.group === group);
+            if (!items.length) return null;
+            return <div key={group}>
               <h2 className="mb-1 px-1 text-xs font-bold uppercase tracking-wider text-muted">{group}</h2>
-              <ul className="space-y-1">
-                {ENDPOINTS.filter((endpoint) => endpoint.group === group).map((endpoint) => (
-                  <li key={endpoint.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelected(endpoint)}
-                      aria-current={selected.id === endpoint.id ? "true" : undefined}
-                      className={"flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm transition " + (selected.id === endpoint.id ? "border-brand bg-brand/15" : "border-transparent hover:bg-surface2")}
-                    >
-                      <span className="rounded bg-accent/20 px-1.5 text-[10px] font-bold text-accent">{endpoint.method}</span>
-                      <span className="truncate">{endpoint.path.replace("/api/v1", "")}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+              <ul className="space-y-1">{items.map((endpoint) => <li key={endpoint.id}>
+                <div className={"flex items-center gap-1 rounded-xl border px-2 py-1 " + (selected.id === endpoint.id ? "border-brand bg-brand/10" : "border-transparent hover:bg-surface2")}>
+                  <button type="button" onClick={() => setSelected(endpoint)} aria-current={selected.id === endpoint.id ? "true" : undefined} className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left text-xs">
+                    <span className="rounded bg-accent/20 px-1.5 py-1 text-[9px] font-bold text-accent">{endpoint.method}</span><span className="truncate">{endpoint.path.replace("/api/v1", "")}</span>
+                  </button>
+                  <button type="button" aria-label="Alternar favorito" onClick={() => toggleFavorite(endpoint.id)} className={"px-2 py-1 text-sm " + (favorites.includes(endpoint.id) ? "text-amber-400" : "text-muted")}>{favorites.includes(endpoint.id) ? "★" : "☆"}</button>
+                </div>
+              </li>)}</ul>
+            </div>;
+          })}
+          {!filteredEndpoints.length && <p className="rounded-xl border border-line p-3 text-xs text-muted">No hay endpoints que coincidan.</p>}
+          <div className="rounded-xl border border-line p-3">
+            <button type="button" onClick={() => setShowHistory((v) => !v)} className="flex w-full items-center justify-between text-sm font-semibold">Historial reciente <span>{showHistory ? "−" : "+"}</span></button>
+            {showHistory && <div className="mt-3 space-y-2">{history.length ? history.slice(0, 8).map((item) => <button key={item.id} type="button" onClick={() => { const found = ENDPOINTS.find((endpoint) => endpoint.id === item.endpointId); if (found) setSelected(found); }} className="block w-full text-left text-xs"><span className={item.ok ? "text-ok" : "text-danger"}>●</span> {item.method} {item.path}<span className="block text-muted">{item.status ?? "Sin respuesta"} · {item.duration} ms</span></button>) : <p className="text-xs text-muted">Todavía no hay pruebas.</p>}</div>}
+          </div>
         </nav>
-
         <section className="card space-y-4" aria-label="Probar endpoint">
           <div>
             <p className="break-all">
               <span className="chip mr-2 !min-h-[28px] text-xs font-bold">{selected.method}</span>
               <code>{selected.path}</code>
+              <button type="button" onClick={() => toggleFavorite(selected.id)} className="ml-2 text-sm text-amber-400" aria-label="Alternar favorito">{favorites.includes(selected.id) ? "★ Guardado" : "☆ Favorito"}</button>
             </p>
             <p className="mt-2 text-sm text-muted">{selected.what}</p>
           </div>
@@ -163,7 +211,7 @@ export default function EndpointsPage() {
           <form onSubmit={run} className="space-y-3">
             <div>
               <label htmlFor="apikey" className="label">Tu clave de API</label>
-              <input id="apikey" type="password" autoComplete="off" className="input" placeholder="amk_…" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+              <div className="flex gap-2"><input id="apikey" type={showApiKey ? "text" : "password"} autoComplete="off" className="input min-w-0 flex-1" placeholder="amk_…" value={apiKey} onChange={(e) => setApiKey(e.target.value)} /><button type="button" className="btn-secondary" onClick={() => setShowApiKey((v) => !v)}>{showApiKey ? "Ocultar" : "Mostrar"}</button></div>
               <p className="hint">La clave solo permanece en la memoria de esta pestaña; no se guarda.</p>
             </div>
 
@@ -175,7 +223,8 @@ export default function EndpointsPage() {
                     {param.options.map((option) => <option key={option}>{option}</option>)}
                   </select>
                 ) : (
-                  <textarea id={"p-" + param.name} className="input min-h-20" value={values[param.name] ?? ""} onChange={(e) => setValues((current) => ({ ...current, [param.name]: e.target.value }))} />
+                  <textarea id={"p-" + param.name} className="input min-h-20 font-mono text-sm" value={values[param.name] ?? ""} onChange={(e) => setValues((current) => ({ ...current, [param.name]: e.target.value }))} />
+                  {param.name === "text" && (values[param.name] ?? "").trim().startsWith("{") && <div className="mt-2 flex flex-wrap gap-2"><button type="button" className="btn-secondary" onClick={() => formatJsonParam(param.name)}>Formatear / validar JSON</button>{jsonNotice && <span className="text-xs text-muted">{jsonNotice}</span>}</div>}
                 )}
               </div>
             ))}
@@ -191,9 +240,19 @@ export default function EndpointsPage() {
             <button type="submit" className="btn-primary" disabled={busy}>{busy ? "Procesando…" : "▶ Probar endpoint"}</button>
           </form>
 
+          <section className="rounded-xl border border-line p-3">
+            <button type="button" onClick={() => setShowDocs((v) => !v)} className="flex w-full items-center justify-between text-sm font-bold">Documentación del endpoint <span>{showDocs ? "−" : "+"}</span></button>
+            {showDocs && <div className="mt-3 space-y-3 text-sm">
+              <p className="text-muted">{selected.what}</p>
+              <div className="grid gap-2 sm:grid-cols-3"><div className="rounded-lg bg-surface2 p-2"><span className="block text-[10px] uppercase text-muted">Método</span><strong>{selected.method}</strong></div><div className="rounded-lg bg-surface2 p-2"><span className="block text-[10px] uppercase text-muted">Respuesta</span><strong>{selected.returns.toUpperCase()}</strong></div><div className="rounded-lg bg-surface2 p-2"><span className="block text-[10px] uppercase text-muted">Autenticación</span><strong>x-api-key</strong></div></div>
+              <div><h4 className="mb-1 text-xs font-bold uppercase text-muted">Parámetros</h4>{selected.params.length ? <div className="overflow-x-auto"><table className="w-full text-left text-xs"><thead><tr className="border-b border-line text-muted"><th className="p-2">Nombre</th><th className="p-2">Descripción</th><th className="p-2">Ejemplo</th></tr></thead><tbody>{selected.params.map((param) => <tr key={param.name} className="border-b border-line/60"><td className="p-2 font-mono">{param.name}</td><td className="p-2">{param.label}</td><td className="p-2 font-mono">{param.example}</td></tr>)}</tbody></table></div> : <p className="text-xs text-muted">No requiere parámetros de URL.</p>}</div>
+              {selected.body === "file" && <p className="rounded-lg bg-surface2 p-2 text-xs text-muted">Cuerpo de solicitud: archivo binario. Adjunta el archivo en el formulario de prueba.</p>}
+            </div>}
+          </section>
+
           <div className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="label !mb-0">Código de integración</h3>
+              <h3 className="label !mb-0">Ejemplos de integración</h3>
               <div className="flex flex-wrap gap-1">
                 {(["JavaScript", "Python", "cURL"] as const).map((tab) => (
                   <button key={tab} type="button" onClick={() => setCodeTab(tab)} className={"rounded-lg px-3 py-1.5 text-xs " + (codeTab === tab ? "bg-brand text-white" : "bg-surface2")}>{tab}</button>
@@ -205,7 +264,7 @@ export default function EndpointsPage() {
           </div>
 
           <div aria-live="polite" className="space-y-2">
-            <h3 className="label">Resultado de la ejecución</h3>
+            <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="label !mb-0">Respuesta del servidor</h3>{duration !== null && <span className="chip text-xs">⏱ {duration} ms</span>}</div>
             {result?.kind === "error" && <p className="rounded-xl border border-danger/50 bg-danger/10 p-3 text-sm text-danger" role="alert">{result.message}</p>}
             {result && result.kind !== "error" && (
               <div className="space-y-3">

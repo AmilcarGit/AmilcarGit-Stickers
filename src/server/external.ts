@@ -73,7 +73,7 @@ function parseEmbeddedJson(html: string, marker: string): unknown | null {
     const char = html[i];
     if (quoted) {
       if (escaped) escaped = false;
-      else if (char === "\\\\") escaped = true;
+      else if (char === "\\") escaped = true;
       else if (char === '"') quoted = false;
       continue;
     }

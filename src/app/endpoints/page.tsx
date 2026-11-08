@@ -129,8 +129,9 @@ export default function EndpointsPage() {
       if (isDownload) {
         if (!res.ok) {
           const message = await res.text();
-          return setDownloadProgress(null);
+          setDownloadProgress(null);
           setResult({ kind: "error", message: message || "La API no pudo procesar la solicitud." });
+          return;
         }
         const chunks: BlobPart[] = [];
         let loaded = 0;
@@ -234,7 +235,7 @@ export default function EndpointsPage() {
                   <button type="button" aria-label="Alternar favorito" onClick={() => toggleFavorite(endpoint.id)} className={"px-2 py-1 text-sm " + (favorites.includes(endpoint.id) ? "text-amber-400" : "text-muted")}>{favorites.includes(endpoint.id) ? "★" : "☆"}</button>
                 </div>
               </li>)}</ul>}
-              {group === "Descargas y archivos" && expanded && <p className="border-t border-line px-3 py-2 text-[10px] leading-relaxed text-muted">Incluye descargas de YouTube (audio y video) y resolución de medios públicos de Pinterest. Límite configurado: 100 MB por archivo. La velocidad y disponibilidad dependen del proveedor externo y de que el Pin exponga un archivo multimedia directo.</p>}
+              {group === "Descargas y archivos" && expanded && <p className="border-t border-line px-3 py-2 text-[10px] leading-relaxed text-muted">Incluye descargas de YouTube (audio y video) y resolución de medios públicos de Pinterest. Límite configurado: hasta 800 MB por archivo. La velocidad y disponibilidad dependen del proveedor externo y de que el Pin exponga un archivo multimedia directo.</p>}
             </section>;
           })}
           {!filteredEndpoints.length && <p className="rounded-xl border border-line p-3 text-xs text-muted">No hay endpoints que coincidan.</p>}
@@ -315,7 +316,7 @@ export default function EndpointsPage() {
             {downloadProgress && <div className="rounded-xl border border-line bg-surface2 p-3 space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><strong>HTTP {downloadProgress.status}</strong><span className="text-muted">{downloadProgress.phase === "ready" ? "Archivo recibido" : "Recibiendo archivo…"} · {(downloadProgress.loaded / 1048576).toFixed(2)} MB{downloadProgress.total !== null ? " / " + (downloadProgress.total / 1048576).toFixed(2) + " MB" : ""}</span></div>
               <div className="h-2 overflow-hidden rounded-full bg-surface"><div className="h-full rounded-full bg-brand transition-[width]" style={{ width: downloadProgress.phase === "ready" ? "100%" : downloadProgress.total ? Math.min(99, downloadProgress.loaded / downloadProgress.total * 100) + "%" : "35%" }} /></div>
-              <p className="text-[11px] text-muted">{downloadProgress.phase === "ready" ? "La descarga está lista. Pulsa el botón para guardar el archivo." : downloadProgress.total ? Math.min(99, Math.round(downloadProgress.loaded / downloadProgress.total * 100)) + "% completado" : "El servidor no informó el tamaño total; se muestra el volumen recibido."}</p>
+              <p className="text-[11px] text-muted">{downloadProgress.phase === "ready" ? "La descarga está lista. Pulsa el botón para guardar el archivo." : downloadProgress.total ? Math.min(99, Math.round(downloadProgress.loaded / downloadProgress.total * 100)) + "% completado" : "El servidor no informó el tamaño total; se muestra el volumen recibido. Límite configurado: 800 MB."}</p>
             </div> }
             {result?.kind === "error" && <p className="rounded-xl border border-danger/50 bg-danger/10 p-3 text-sm text-danger" role="alert">{result.message}</p>}
             {result && result.kind !== "error" && (

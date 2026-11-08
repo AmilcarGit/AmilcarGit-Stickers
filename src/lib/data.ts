@@ -66,6 +66,10 @@ export async function createApiKey(name: string): Promise<{ key: string; info: A
   return api("/api/keys", { method: "POST", body: { name } });
 }
 
+export async function getApiKeySecret(id: string): Promise<string> {
+  return (await api<{ key: string }>(`/api/keys/${encodeURIComponent(id)}/secret`)).key;
+}
+
 export async function revokeApiKey(id: string): Promise<void> {
   await api(`/api/keys/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

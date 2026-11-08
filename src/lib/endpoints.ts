@@ -31,6 +31,8 @@ export const ENDPOINTS: Endpoint[] = [
   { id: "countries", group: "Búsqueda", method: "GET", path: "/api/v1/search/countries", what: "Busca países y devuelve capital, región, población, bandera, idiomas y monedas.", params: [q("Peru"), limit], returns: "json" },
   { id: "papers", group: "Búsqueda", method: "GET", path: "/api/v1/search/papers", what: "Busca artículos y publicaciones científicas en Crossref; sin registro ni API key.", params: [q("machine learning"), limit], returns: "json" },
   { id: "ebooks", group: "Búsqueda", method: "GET", path: "/api/v1/search/ebooks", what: "Busca libros electrónicos de dominio público en Gutendex / Project Gutenberg.", params: [q("Sherlock Holmes"), limit], returns: "json" },
+  { id: "youtube-search", group: "Búsqueda", method: "GET", path: "/api/v1/search/youtube", what: "Busca videos públicos de YouTube por texto y devuelve título, canal, duración, miniatura y enlace original. Los resultados dependen de la disponibilidad de la búsqueda pública de YouTube.", params: [q("música peruana"), limit], returns: "json" },
+  { id: "pinterest-search", group: "Búsqueda", method: "GET", path: "/api/v1/search/pinterest", what: "Busca Pines públicos de Pinterest por texto y devuelve título, imagen previa y enlace cuando Pinterest expone esos datos.", params: [q("fondos anime"), limit], returns: "json" },
 
   upload("file-info", "Descargas y archivos", "file-info", "Analiza un archivo local: nombre, tamaño, MIME y metadatos básicos de imagen."),
   upload("file-base64", "Descargas y archivos", "file-base64", "Convierte un archivo adjunto a Base64 y devuelve sus metadatos."),

@@ -2,7 +2,7 @@ import { recordUsage } from "./profile";
 import type { Deps } from "./deps";
 import { AppError } from "./errors";
 import { hit } from "./store";
-import { randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { sha256 } from "./tokens";
 import { getUser, recordUserActivity, recordAdminAction, type UserRecord } from "./users";
 
@@ -20,7 +20,7 @@ export const MAX_KEYS_PER_USER = 5;
 const KEY_PREFIX = "amk_";
 const DAY_OFFSET_MS = -5 * 3600 * 1000;
 
-type KeyRecord = { id: string; uid: string; name: string; prefix: string; createdAt: number; lastUsedAt: number; dailyLimit?: number | null; minuteLimit?: number | null };
+type KeyRecord = { id: string; uid: string; name: string; prefix: string; createdAt: number; lastUsedAt: number; dailyLimit?: number | null; minuteLimit?: number | null; encryptedKey?: string };
 export type KeyInfo = Omit<KeyRecord, "uid">;
 export type Quota = { plan: PlanId; limit: number; used: number; remaining: number; resetAt: number };
 export type KeyUsage = { day: string; requests: number };
@@ -34,6 +34,28 @@ export function nextResetMs(nowMs: number): number {
   return nextMidnight - DAY_OFFSET_MS;
 }
 const hashOf = (key: string) => sha256(key);
+function encryptionKey(): Buffer {
+  const secret = process.env.AUTH_SECRET ?? "";
+  if (secret.length < 32) throw new AppError(500, "La configuración segura de claves no está disponible.");
+  return createHash("sha256").update("YuiAPI API key encryption v1:").update(secret).digest();
+}
+function encryptKey(key: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(key, "utf8"), cipher.final()]);
+  return [iv.toString("base64url"), cipher.getAuthTag().toString("base64url"), encrypted.toString("base64url")].join(".");
+}
+function decryptKey(value: string): string {
+  const [ivText, tagText, dataText] = value.split(".");
+  if (!ivText || !tagText || !dataText) throw new AppError(500, "No se pudo descifrar la clave.");
+  try {
+    const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), Buffer.from(ivText, "base64url"));
+    decipher.setAuthTag(Buffer.from(tagText, "base64url"));
+    return Buffer.concat([decipher.update(Buffer.from(dataText, "base64url")), decipher.final()]).toString("utf8");
+  } catch {
+    throw new AppError(500, "No se pudo descifrar la clave. Comprueba la configuración del servidor.");
+  }
+}
 const toInfo = (r: KeyRecord): KeyInfo => ({ id: r.id, name: r.name, prefix: r.prefix, createdAt: r.createdAt, lastUsedAt: r.lastUsedAt, dailyLimit: r.dailyLimit ?? null, minuteLimit: r.minuteLimit ?? null });
 
 export async function getPlanConfig(d: Deps, id: string): Promise<PlanConfig | null> {
@@ -78,7 +100,7 @@ async function createKeyForUser(d: Deps, user: UserRecord, rawName: unknown, all
   if (!skipMax && (await d.store.zcard(`apikeys:${user.uid}`)) >= MAX_KEYS_PER_USER) throw new AppError(403, `Llegaste al máximo de ${MAX_KEYS_PER_USER} claves. Revoca alguna para crear otra.`);
   const key = KEY_PREFIX + randomBytes(24).toString("base64url");
   const hash = hashOf(key);
-  const rec: KeyRecord = { id: hash.slice(0, 16), uid: user.uid, name, prefix: key.slice(0, 8), createdAt: nowMs, lastUsedAt: 0, dailyLimit: null, minuteLimit: null };
+  const rec: KeyRecord = { id: hash.slice(0, 16), uid: user.uid, name, prefix: key.slice(0, 8), createdAt: nowMs, lastUsedAt: 0, dailyLimit: null, minuteLimit: null, encryptedKey: encryptKey(key) };
   await d.store.set(`apikey:${hash}`, rec);
   await d.store.zadd(`apikeys:${user.uid}`, nowMs, hash);
   return { key, info: toInfo(rec) };
@@ -105,6 +127,11 @@ export async function listApiKeys(d: Deps, uid: string): Promise<KeyInfo[]> {
 }
 export async function listAdminApiKeys(d: Deps, uid: string): Promise<KeyInfo[]> {
   return listApiKeys(d, uid);
+}
+export async function getApiKeySecret(d: Deps, uid: string, id: string): Promise<string> {
+  const { rec } = await findKey(d, uid, id);
+  if (!rec.encryptedKey) throw new AppError(409, "Esta clave es anterior al guardado cifrado y no se puede recuperar. Revócala y crea una nueva.");
+  return decryptKey(rec.encryptedKey);
 }
 export async function revokeApiKey(d: Deps, uid: string, id: string): Promise<void> {
   const { hash } = await findKey(d, uid, id);

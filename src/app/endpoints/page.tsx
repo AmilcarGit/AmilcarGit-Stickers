@@ -38,6 +38,7 @@ export default function EndpointsPage() {
   const [showFavorites, setShowFavorites] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showDocs, setShowDocs] = useState(true);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(["Búsqueda"]);
   const [showApiKey, setShowApiKey] = useState(false);
   const [jsonNotice, setJsonNotice] = useState("");
   const [duration, setDuration] = useState<number | null>(null);
@@ -182,17 +183,35 @@ export default function EndpointsPage() {
           {GROUPS.map((group) => {
             const items = filteredEndpoints.filter((endpoint) => endpoint.group === group);
             if (!items.length) return null;
-            return <div key={group}>
-              <h2 className="mb-1 px-1 text-xs font-bold uppercase tracking-wider text-muted">{group}</h2>
-              <ul className="space-y-1">{items.map((endpoint) => <li key={endpoint.id}>
+            const expanded = search.trim().length > 0 || expandedGroups.includes(group);
+            const folderIcons: Record<string, string> = {
+              "Stickers": "✳", "Búsqueda": "⌕", "Descargas y archivos": "⇩",
+              "Imágenes": "▧", "Generadores": "✣", "Desarrolladores": "{ }", "Cuenta": "◉",
+            };
+            return <section key={group} className="overflow-hidden rounded-xl border border-line bg-surface/60">
+              <button
+                type="button"
+                aria-expanded={expanded}
+                onClick={() => setExpandedGroups((current) => current.includes(group) ? current.filter((item) => item !== group) : [...current, group])}
+                className="flex w-full items-center gap-2 px-3 py-3 text-left transition hover:bg-surface2"
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-xs font-bold text-brand">{folderIcons[group]}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs font-bold">{group}</span>
+                  <span className="block text-[10px] text-muted">{items.length} {items.length === 1 ? "endpoint" : "endpoints"}</span>
+                </span>
+                <span className="text-xs text-muted">{expanded ? "−" : "+"}</span>
+              </button>
+              {expanded && <ul className="space-y-1 border-t border-line p-2">{items.map((endpoint) => <li key={endpoint.id}>
                 <div className={"flex items-center gap-1 rounded-xl border px-2 py-1 " + (selected.id === endpoint.id ? "border-brand bg-brand/10" : "border-transparent hover:bg-surface2")}>
                   <button type="button" onClick={() => setSelected(endpoint)} aria-current={selected.id === endpoint.id ? "true" : undefined} className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left text-xs">
                     <span className="rounded bg-accent/20 px-1.5 py-1 text-[9px] font-bold text-accent">{endpoint.method}</span><span className="truncate">{endpoint.path.replace("/api/v1", "")}</span>
                   </button>
                   <button type="button" aria-label="Alternar favorito" onClick={() => toggleFavorite(endpoint.id)} className={"px-2 py-1 text-sm " + (favorites.includes(endpoint.id) ? "text-amber-400" : "text-muted")}>{favorites.includes(endpoint.id) ? "★" : "☆"}</button>
                 </div>
-              </li>)}</ul>
-            </div>;
+              </li>)}</ul>}
+              {group === "Descargas y archivos" && expanded && <p className="border-t border-line px-3 py-2 text-[10px] leading-relaxed text-muted">Actualmente procesa archivos que adjuntas. Los conectores de YouTube y Pinterest todavía no están disponibles; no se presentan como descargadores hasta contar con una integración permitida y verificable.</p>}
+            </section>;
           })}
           {!filteredEndpoints.length && <p className="rounded-xl border border-line p-3 text-xs text-muted">No hay endpoints que coincidan.</p>}
           <div className="rounded-xl border border-line p-3">

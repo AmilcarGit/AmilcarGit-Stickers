@@ -3,21 +3,17 @@ import { Wordmark } from "./Mascot";
 
 export function Footer() {
   return (
-    <footer className="mt-16 border-t border-line">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
-        <p>
-          <span aria-hidden="true">🌸</span> <Wordmark /> · API de búsqueda y herramientas, hecha con cariño.
-        </p>
-        <nav aria-label="Pie" className="flex flex-wrap gap-4">
-          <Link href="/endpoints" className="hover:text-ink">
-            Endpoints
-          </Link>
-          <Link href="/docs" className="hover:text-ink">
-            Documentación
-          </Link>
-          <Link href="/legal" className="hover:text-ink">
-            Términos
-          </Link>
+    <footer className="yui-footer">
+      <div className="yui-footer-inner">
+        <div>
+          <p className="font-semibold text-ink"><Wordmark /> <span className="font-normal text-muted">· Developer API Platform</span></p>
+          <p className="mt-1 text-xs">Herramientas y endpoints para bots y aplicaciones.</p>
+        </div>
+        <nav aria-label="Enlaces del pie" className="yui-footer-links">
+          <Link href="/endpoints">Endpoints</Link>
+          <Link href="/developer">Developer Studio</Link>
+          <Link href="/docs">Documentación</Link>
+          <Link href="/legal">Términos</Link>
         </nav>
       </div>
     </footer>

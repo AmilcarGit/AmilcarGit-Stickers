@@ -1,160 +1,126 @@
-import type { CSSProperties } from "react";
 import Link from "next/link";
 import { Mascot } from "@/components/Mascot";
 import { TopRanking } from "@/components/TopRanking";
 import { ENDPOINTS, GROUPS } from "@/lib/endpoints";
 
 const groupInfo: Record<(typeof GROUPS)[number], { icon: string; text: string }> = {
-  Stickers: { icon: "🖼️", text: "Convierte imágenes y GIF, crea stickers de texto y quita fondos lisos." },
-  Utilidades: { icon: "🧭", text: "Clima, tipo de cambio y traductor listos para un comando de bot." },
-  Búsqueda: { icon: "🔎", text: "Música, anime, Wikipedia, libros, series, países, papers y más." },
-  "Descargas y archivos": { icon: "📦", text: "Datos de archivos, Base64 y descargas." },
-  Imágenes: { icon: "🎨", text: "Redimensiona, comprime, convierte y desenfoca." },
-  Generadores: { icon: "✨", text: "QR, hashes, UUID y contraseñas seguras." },
-  Desarrolladores: { icon: "🛠️", text: "JSON, URL y Base64 a una llamada de distancia." },
-  Cuenta: { icon: "🔑", text: "Consulta tu plan y lo que te queda hoy." },
+  Stickers: { icon: "▧", text: "Convierte imágenes y GIF, crea stickers de texto y quita fondos lisos." },
+  Utilidades: { icon: "⌁", text: "Clima, tipo de cambio y traductor listos para un comando de bot." },
+  Búsqueda: { icon: "⌕", text: "Música, anime, Wikipedia, libros, series, países, papers y más." },
+  "Descargas y archivos": { icon: "⇩", text: "Datos de archivos, Base64 y descargas." },
+  Imágenes: { icon: "◈", text: "Redimensiona, comprime, convierte y desenfoca." },
+  Generadores: { icon: "✳", text: "QR, hashes, UUID y contraseñas seguras." },
+  Desarrolladores: { icon: "{ }", text: "JSON, URL y Base64 a una llamada de distancia." },
+  Cuenta: { icon: "◎", text: "Consulta tu plan y lo que te queda hoy." },
 };
 
-const botIdeas = [
-  { cmd: "/clima lima", path: "/api/v1/weather?city=Lima", what: "Clima y pronóstico de 3 días" },
-  { cmd: "/dolar 100", path: "/api/v1/exchange?from=USD&to=PEN&amount=100", what: "Convierte monedas" },
-  { cmd: "/traducir en hola", path: "/api/v1/translate?text=hola&to=en", what: "Traduce textos cortos" },
-  { cmd: "/attp hola", path: "/api/v1/sticker/text?text=hola", what: "Sticker solo con texto" },
-  { cmd: "/s (foto)", path: "/api/v1/sticker", what: "Imagen o GIF a sticker" },
-  { cmd: "/sinfondo (foto)", path: "/api/v1/sticker/remove-bg", what: "Quita fondos lisos" },
+const examples = [
+  { command: "/clima lima", path: "/api/v1/weather?city=Lima", description: "Clima y pronóstico" },
+  { command: "/dolar 100", path: "/api/v1/exchange?from=USD&to=PEN&amount=100", description: "Conversión de monedas" },
+  { command: "/traducir en hola", path: "/api/v1/translate?text=hola&to=en", description: "Traducción de textos" },
 ];
 
 const steps = [
-  { n: "1", title: "Crea tu cuenta", text: "Regístrate y verifica tu correo." },
-  { n: "2", title: "Genera una clave", text: "Desde tu panel, con el nombre de tu bot o app." },
-  { n: "3", title: "Llama a la API", text: "Envía la clave en x-api-key y recibe JSON o imágenes." },
-];
-
-const petals = [
-  { x: "6%", s: "14px", d: "11s", delay: "0s", drift: "40px" },
-  { x: "18%", s: "10px", d: "14s", delay: "3s", drift: "-30px" },
-  { x: "31%", s: "16px", d: "12s", delay: "6s", drift: "50px" },
-  { x: "47%", s: "9px", d: "15s", delay: "1s", drift: "-40px" },
-  { x: "62%", s: "13px", d: "10s", delay: "4s", drift: "30px" },
-  { x: "75%", s: "11px", d: "13s", delay: "7s", drift: "-50px" },
-  { x: "88%", s: "15px", d: "12s", delay: "2s", drift: "-20px" },
+  { number: "01", title: "Crea tu cuenta", description: "Regístrate y verifica tu correo." },
+  { number: "02", title: "Genera una clave", description: "Crea una API Key desde tu panel." },
+  { number: "03", title: "Integra y construye", description: "Envía la clave en x-api-key y recibe JSON o archivos." },
 ];
 
 export default function HomePage() {
   const total = ENDPOINTS.length;
   return (
-    <div className="space-y-20">
-      <section className="relative grid items-center gap-10 py-6 md:grid-cols-2">
-        <div className="petals" aria-hidden="true">
-          {petals.map((p) => (
-            <span
-              key={p.x}
-              className="petal"
-              style={{ "--x": p.x, "--s": p.s, "--d": p.d, "--delay": p.delay, "--drift": p.drift } as CSSProperties}
-            />
-          ))}
-        </div>
-
-        <div className="relative">
-          <p className="mb-3 inline-block rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-sm font-medium text-accent">
-            🌸 {total} endpoints · clave gratuita
+    <div className="yui-home space-y-5">
+      <section className="yui-home-hero">
+        <div className="yui-home-copy">
+          <span className="yui-home-eyebrow"><span className="yui-live-dot" /> API TOOLKIT · PARA DEVELOPERS</span>
+          <h1 className="yui-home-title">Una API. <span>Más posibilidades.</span></h1>
+          <p className="yui-home-lead">
+            Construye bots y aplicaciones con endpoints para stickers, búsqueda, utilidades y herramientas.
+            Una plataforma clara para integrar, probar y administrar tus solicitudes.
           </p>
-          <h1 className="text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
-            La API para tu <span className="text-brand">bot de WhatsApp</span> y tus <span className="text-accent">apps</span>
-          </h1>
-          <p className="mt-5 max-w-xl text-lg text-muted">
-            Stickers, búsqueda, clima, tipo de cambio, traductor y herramientas listas para usar, con respuestas claras y límites visibles en cada llamada.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/register" className="btn-primary">
-              Obtener mi clave
-            </Link>
-            <Link href="/endpoints" className="btn-ghost">
-              Probar endpoints
-            </Link>
-            <Link href="/docs" className="btn-ghost">
-              Documentación
-            </Link>
+          <div className="yui-home-actions">
+            <Link href="/register" className="btn-primary">Crear cuenta gratuita <span aria-hidden="true">↗</span></Link>
+            <Link href="/endpoints" className="btn-ghost">Explorar endpoints</Link>
+            <Link href="/docs" className="btn-ghost">Leer documentación</Link>
+          </div>
+          <div className="yui-home-proof">
+            <span><b>●</b> Clave gratuita</span>
+            <span><b>●</b> Sin tarjeta</span>
+            <span><b>●</b> Diseñada para bots y apps</span>
           </div>
         </div>
-
-        <div className="relative mx-auto flex aspect-square w-full max-w-sm items-center justify-center" aria-hidden="true">
-          <div className="absolute inset-4 rounded-[2rem] bg-gradient-to-br from-brand/35 via-transparent to-accent/35 blur-2xl" />
-          <div className="card relative flex h-full w-full items-center justify-center !rounded-[2rem]">
-            <Mascot size={260} className="drop-shadow-xl" />
-          </div>
+        <div className="yui-home-art" aria-label="Yui, mascota de YuiAPI">
+          <Mascot size={280} className="yui-home-mascot" title="Yui, mascota de YuiAPI" />
         </div>
       </section>
 
-      <section aria-labelledby="bots">
-        <h2 id="bots" className="text-2xl font-bold sm:text-3xl">
-          Pensada para comandos de bot
-        </h2>
-        <p className="mt-2 max-w-2xl text-muted">Un comando, una llamada. Estos son ejemplos de lo que tu bot puede responder con YuiApi.</p>
-        <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {botIdeas.map((b) => (
-            <li key={b.cmd} className="card lift !p-4">
-              <p className="font-mono text-sm font-bold text-brand">{b.cmd}</p>
-              <p className="mt-1 text-sm">{b.what}</p>
-              <p className="mt-2 truncate font-mono text-xs text-muted" title={b.path}>
-                {b.path}
-              </p>
-            </li>
-          ))}
-        </ul>
+      <section className="yui-home-stats" aria-label="Resumen de la plataforma">
+        <div className="yui-home-stat"><strong>{total}+</strong><span>Endpoints disponibles</span></div>
+        <div className="yui-home-stat"><strong>{GROUPS.length}</strong><span>Categorías organizadas</span></div>
+        <div className="yui-home-stat"><strong>100 / día</strong><span>Límite del plan gratuito</span></div>
       </section>
 
-      <section aria-labelledby="ejemplo" className="card space-y-3">
-        <h2 id="ejemplo" className="text-xl font-bold">
-          Así de simple
-        </h2>
-        <pre className="overflow-x-auto rounded-xl bg-surface2 p-4 text-sm">{`curl -H "x-api-key: TU_CLAVE" \\
-  "https://yuiapi.vercel.app/api/v1/weather?city=Lima"`}</pre>
-      </section>
-
-      <section aria-labelledby="funciones">
-        <h2 id="funciones" className="mb-8 text-2xl font-bold sm:text-3xl">
-          Qué incluye
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {GROUPS.map((g) => (
-            <Link key={g} href="/endpoints" className="card lift block">
-              <div className="mb-3 text-3xl" aria-hidden="true">
-                {groupInfo[g].icon}
-              </div>
-              <h3 className="font-semibold">{g}</h3>
-              <p className="mt-1 text-xs text-accent">{ENDPOINTS.filter((e) => e.group === g).length} endpoints</p>
-              <p className="mt-2 text-sm text-muted">{groupInfo[g].text}</p>
+      <section className="yui-home-section">
+        <div className="yui-home-section-head">
+          <div><h2>Todo lo que necesitas para integrar</h2><p>Explora el catálogo por categorías y encuentra el endpoint adecuado para tu siguiente función.</p></div>
+          <Link href="/endpoints" className="text-sm font-semibold text-brand hover:underline">Ver catálogo completo ↗</Link>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {GROUPS.map((group) => (
+            <Link key={group} href="/endpoints" className="yui-category-card">
+              <span className="yui-category-icon" aria-hidden="true">{groupInfo[group].icon}</span>
+              <h3 className="mt-4 font-bold">{group}</h3>
+              <p className="mt-1 text-xs font-semibold text-accent">{ENDPOINTS.filter((endpoint) => endpoint.group === group).length} endpoints</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{groupInfo[group].text}</p>
             </Link>
           ))}
         </div>
       </section>
 
-      <TopRanking />
+      <section className="yui-home-section grid items-start gap-5 lg:grid-cols-[.85fr_1.15fr]">
+        <div>
+          <span className="yui-home-eyebrow">INTEGRACIÓN RÁPIDA</span>
+          <h2 className="mt-4 text-2xl font-extrabold tracking-tight sm:text-3xl">De la documentación al primer request.</h2>
+          <p className="mt-3 text-sm leading-7 text-muted">Prueba una llamada, revisa la respuesta y lleva el ejemplo a tu bot o aplicación.</p>
+          <Link href="/developer" className="btn-primary mt-5">Abrir Developer Studio ↗</Link>
+        </div>
+        <div className="yui-code-panel">
+          <div className="yui-code-head"><span>REQUEST · cURL</span><span>GET /api/v1/weather</span></div>
+          <pre>{`curl -H "x-api-key: TU_CLAVE" \\\n  "https://yuiapi.vercel.app/api/v1/weather?city=Lima"`}</pre>
+        </div>
+      </section>
 
-      <section aria-labelledby="como">
-        <h2 id="como" className="mb-8 text-2xl font-bold sm:text-3xl">
-          Cómo empezar
-        </h2>
-        <ol className="grid gap-4 md:grid-cols-3">
-          {steps.map((s) => (
-            <li key={s.n} className="card">
-              <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-brand text-lg font-bold text-on-brand">{s.n}</span>
-              <h3 className="font-semibold">{s.title}</h3>
-              <p className="mt-2 text-sm text-muted">{s.text}</p>
+      <section className="yui-home-section">
+        <div className="yui-home-section-head"><div><h2>Empieza en tres pasos</h2><p>Una ruta sencilla para pasar de una cuenta nueva a una integración funcional.</p></div></div>
+        <ol className="grid gap-3 md:grid-cols-3">
+          {steps.map((step) => (
+            <li key={step.number} className="yui-step">
+              <span className="yui-step-num">{step.number}</span>
+              <h3 className="mt-4 font-bold">{step.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-muted">{step.description}</p>
             </li>
           ))}
         </ol>
       </section>
 
-      <section className="card flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold">Empieza gratis</h2>
-          <p className="mt-1 text-sm text-muted">Plan free: 100 solicitudes al día. Sin tarjeta.</p>
+      <section className="yui-home-section">
+        <div className="yui-home-section-head"><div><h2>Ejemplos para tus bots</h2><p>Rutas ilustrativas que puedes adaptar a los comandos de tus proyectos.</p></div></div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {examples.map((item) => (
+            <article key={item.command} className="card !p-4">
+              <p className="font-mono text-sm font-bold text-accent">{item.command}</p>
+              <p className="mt-2 text-sm font-semibold">{item.description}</p>
+              <code className="mt-3 block break-all text-xs text-muted">{item.path}</code>
+            </article>
+          ))}
         </div>
-        <Link href="/register" className="btn-primary">
-          Crear cuenta
-        </Link>
+      </section>
+
+      <section className="yui-home-section"><TopRanking /></section>
+
+      <section className="card flex flex-col items-start justify-between gap-4 !p-6 sm:flex-row sm:items-center">
+        <div><span className="yui-home-eyebrow">LISTO PARA EMPEZAR</span><h2 className="mt-3 text-xl font-extrabold">Construye algo con YuiAPI.</h2><p className="mt-1 text-sm text-muted">Crea tu cuenta y genera tu primera clave API.</p></div>
+        <Link href="/register" className="btn-primary">Crear cuenta gratuita ↗</Link>
       </section>
     </div>
   );

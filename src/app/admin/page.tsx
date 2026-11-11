@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RequireAdmin } from "@/components/Guards";
+import { AdminPerformance } from "@/components/AdminPerformance";
 import { VerifiedName } from "@/components/VerifiedName";
 import { AdminBadges } from "@/components/AdminBadges";
 import { useToast } from "@/components/Providers";
@@ -380,6 +381,8 @@ function AdminInner() {
           {refreshing ? "Actualizando…" : "Actualizar datos"}
         </button>
       </header>
+
+      <AdminPerformance />
 
       <section aria-label="Resumen de usuarios" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <article className="group rounded-2xl border border-violet-400/20 bg-gradient-to-br from-violet-500/15 to-surface/80 p-4 shadow-lg shadow-violet-950/10">

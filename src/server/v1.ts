@@ -6,6 +6,7 @@ import { clientIp } from "./http";
 import { hit } from "./store";
 import { isIpBlocked, recordSecurityEvent } from "./security";
 import type { UserRecord } from "./users";
+import { recordApiMetric } from "./metrics";
 
 const CORS: Record<string, string> = {
   "access-control-allow-origin": "*",
@@ -46,37 +47,49 @@ export function apiKeyFrom(req: Request, url: URL): string | null {
 
 async function run<P>(req: Request, params: P, fn: Handler<P>): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
-  let quota: Quota | undefined;
+  const startedAt = Date.now();
+  const url = new URL(req.url);
+  const path = url.pathname;
+  let status = 500;
   try {
     const d = getDeps();
-    const url = new URL(req.url);
     const ip = clientIp(req);
     const blocked = await isIpBlocked(d, ip);
     if (blocked) {
       if (await hit(d.store, `security:block-hit:${ip}`, 1, 60)) {
-        await recordSecurityEvent(d, { type: "rate_limited", severity: "warning", ip, path: url.pathname, detail: "Solicitud rechazada desde una IP bloqueada" }).catch(() => undefined);
+        await recordSecurityEvent(d, { type: "rate_limited", severity: "warning", ip, path, detail: "Solicitud rechazada desde una IP bloqueada" }).catch(() => undefined);
       }
-      return fail(403, "Esta dirección IP está bloqueada temporalmente.");
+      const response = fail(403, "Esta dirección IP está bloqueada temporalmente.");
+      status = response.status;
+      return response;
     }
     const auth = await authenticateApiKey(d, apiKeyFrom(req, url));
-    quota = auth.quota;
-    return reply(await fn({ d, req, url, ip, user: auth.user, quota }, params), quota);
+    const response = reply(await fn({ d, req, url, ip, user: auth.user, quota: auth.quota }, params), auth.quota);
+    status = response.status;
+    return response;
   } catch (err) {
     if (err instanceof AppError) {
-      const d = getDeps();
-      const url = new URL(req.url);
-      const ip = clientIp(req);
-      if (err.status === 401 && await hit(d.store, `security:auth-event:${ip}`, 1, 60)) {
-        await recordSecurityEvent(d, { type: "api_key_rejected", severity: "warning", ip, path: url.pathname, detail: "Clave de API ausente, inválida o revocada" }).catch(() => undefined);
-      } else if (err.status === 429 && await hit(d.store, `security:rate-event:${ip}`, 1, 60)) {
-        await recordSecurityEvent(d, { type: "rate_limited", severity: "warning", ip, path: url.pathname, detail: "Se alcanzó un límite de solicitudes" }).catch(() => undefined);
+      try {
+        const d = getDeps();
+        const ip = clientIp(req);
+        if (err.status === 401 && await hit(d.store, `security:auth-event:${ip}`, 1, 60)) {
+          await recordSecurityEvent(d, { type: "api_key_rejected", severity: "warning", ip, path, detail: "Clave de API ausente, inválida o revocada" }).catch(() => undefined);
+        } else if (err.status === 429 && await hit(d.store, `security:rate-event:${ip}`, 1, 60)) {
+          await recordSecurityEvent(d, { type: "rate_limited", severity: "warning", ip, path, detail: "Se alcanzó un límite de solicitudes" }).catch(() => undefined);
+        }
+      } catch {
+        // La respuesta original no debe quedar bloqueada por un fallo al registrar el evento.
       }
-      const res = fail(err.status, err.message);
-      if (quota) res.headers.set("x-ratelimit-remaining", String(quota.remaining));
-      return res;
+      const response = fail(err.status, err.message);
+      status = response.status;
+      return response;
     }
     console.error("Error inesperado en la API v1:", err instanceof Error ? err.message : "desconocido");
-    return fail(500, "Ocurrió un error en el servidor. Inténtalo otra vez.");
+    const response = fail(500, "Ocurrió un error en el servidor. Inténtalo otra vez.");
+    status = response.status;
+    return response;
+  } finally {
+    recordApiMetric(path, status, Date.now() - startedAt);
   }
 }
 

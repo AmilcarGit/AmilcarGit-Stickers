@@ -179,32 +179,50 @@ export async function authenticateApiKey(d: Deps, raw: string | null, nowMs = Da
   const user = rec ? await getUser(d, rec.uid) : null;
   if (!rec || !user) throw new AppError(401, "Clave de API inválida o revocada.");
   if (user.status === "suspended") throw new AppError(403, "La cuenta asociada a esta clave está suspendida.");
+
   const active = await effectivePlan(d, user, nowMs);
-  const keyRateAllowed = rec.minuteLimit === null || rec.minuteLimit === undefined || await hit(d.store, `rl:key:${hash}`, rec.minuteLimit, 60);
-  if (!keyRateAllowed || !(await hit(d.store, `rl:api:${user.uid}`, user.minuteLimit ?? active.config.perMinute, 60))) throw new AppError(429, "Demasiadas solicitudes por minuto. Espera unos segundos.");
+  const [keyRateAllowed, userRateAllowed] = await Promise.all([
+    rec.minuteLimit === null || rec.minuteLimit === undefined
+      ? Promise.resolve(true)
+      : hit(d.store, `rl:key:${hash}`, rec.minuteLimit, 60),
+    hit(d.store, `rl:api:${user.uid}`, user.minuteLimit ?? active.config.perMinute, 60),
+  ]);
+  if (!keyRateAllowed || !userRateAllowed) throw new AppError(429, "Demasiadas solicitudes por minuto. Espera unos segundos.");
+
   const stamp = dayStamp(nowMs);
   const userQuotaKey = `quota:${user.uid}:${stamp}`;
   const used = await d.store.incr(userQuotaKey);
   if (used === 1) await d.store.expire(userQuotaKey, 2 * 86_400);
   const userLimit = user.dailyLimit ?? active.config.perDay;
   if (used > userLimit) throw new AppError(429, `Agotaste las ${userLimit} solicitudes de hoy. Se renuevan a las 12 a. m. (hora de Lima).`);
+
   const keyQuotaKey = `quota:key:${hash}:${stamp}`;
   const keyUsed = await d.store.incr(keyQuotaKey);
   if (keyUsed === 1) await d.store.expire(keyQuotaKey, 2 * 86_400);
   const keyLimit = rec.dailyLimit ?? userLimit;
   if (keyUsed > keyLimit) throw new AppError(429, `Esta clave agotó sus ${keyLimit} solicitudes diarias.`);
-  await recordUsage(d, user.uid, nowMs);
-  if (nowMs - rec.lastUsedAt > 60_000) await d.store.set(`apikey:${hash}`, { ...rec, lastUsedAt: nowMs });
-  await d.store.hincrby(`apikey-usage:${rec.id}:${stamp}`, "requests", 1);
-  await d.store.zadd(`apikey-days:${rec.id}`, nowMs, stamp);
-  if (await d.store.zcard(`apikey-days:${rec.id}`) > 30) {
-    const oldDays = await d.store.zrange(`apikey-days:${rec.id}`, 0, -31);
-    for (const oldDay of oldDays) {
-      await d.store.del(`apikey-usage:${rec.id}:${oldDay}`);
-      await d.store.zrem(`apikey-days:${rec.id}`, oldDay);
-    }
+
+  const activityDue = await d.store.set(`activity:api-minute:${user.uid}`, stamp, { ex: 60, nx: true });
+  const pruneDue = await d.store.set(`apikey-days:pruned:${rec.id}`, stamp, { ex: 86_400, nx: true });
+  const writes: Promise<unknown>[] = [
+    recordUsage(d, user.uid, nowMs),
+    d.store.hincrby(`apikey-usage:${rec.id}:${stamp}`, "requests", 1),
+    d.store.zadd(`apikey-days:${rec.id}`, nowMs, stamp),
+  ];
+  if (nowMs - rec.lastUsedAt > 60_000) writes.push(d.store.set(`apikey:${hash}`, { ...rec, lastUsedAt: nowMs }));
+  if (activityDue) writes.push(recordUserActivity(d, user.uid, "uso_api", `Solicitud API con clave ${rec.prefix}…`));
+  if (pruneDue) {
+    writes.push((async () => {
+      if (await d.store.zcard(`apikey-days:${rec.id}`) <= 30) return;
+      const oldDays = await d.store.zrange(`apikey-days:${rec.id}`, 0, -31);
+      await Promise.all(oldDays.flatMap((day) => [
+        d.store.del(`apikey-usage:${rec.id}:${day}`),
+        d.store.zrem(`apikey-days:${rec.id}`, day),
+      ]));
+    })());
   }
-  await recordUserActivity(d, user.uid, "uso_api", `Solicitud API con clave ${rec.prefix}…`);
+  await Promise.all(writes);
+
   return { user, keyId: rec.id, quota: { plan: active.id, limit: userLimit, used, remaining: userLimit - used, resetAt: nextResetMs(nowMs) } };
 }
 export async function setUserPlan(d: Deps, uid: string, plan: unknown, durationDays?: unknown): Promise<void> {

@@ -493,3 +493,91 @@ input[type="range"] {
   .lift { transition: none; }
   .lift:hover { transform: none; }
 }
+
+
+/* YuiAPI dashboard refresh: mejor jerarquía, navegación clara y controles táctiles. */
+.yui-dashboard-v2 { gap: 1.4rem; }
+.yui-dashboard-v2 .yui-hero {
+  min-height: 20rem;
+  border-color: rgb(var(--brand) / .32);
+  box-shadow: 0 26px 76px rgb(0 0 0 / .22), inset 0 1px rgb(255 255 255 / .06);
+}
+.yui-dashboard-v2 .yui-side-nav {
+  position: sticky;
+  top: 1rem;
+  border: 1px solid rgb(var(--line) / .85);
+  border-radius: 1.15rem;
+  background: linear-gradient(160deg, rgb(var(--surface) / .96), rgb(var(--bg) / .92));
+  box-shadow: 0 16px 38px rgb(0 0 0 / .12);
+  backdrop-filter: blur(16px);
+}
+.yui-dashboard-v2 .yui-side-link {
+  min-height: 2.65rem;
+  border: 1px solid transparent;
+  border-radius: .75rem;
+  transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+}
+.yui-dashboard-v2 .yui-side-link:hover {
+  border-color: rgb(var(--brand) / .2);
+  background: rgb(var(--brand) / .08);
+  color: rgb(var(--ink));
+}
+.yui-dashboard-v2 .yui-side-link.is-active {
+  border-color: rgb(var(--brand) / .28);
+  background: linear-gradient(100deg, rgb(var(--brand) / .16), rgb(var(--accent) / .1));
+  color: rgb(var(--ink));
+}
+.yui-dashboard-v2 .yui-section-block,
+.yui-dashboard-v2 .yui-usage-panel,
+.yui-dashboard-v2 .yui-key-reveal {
+  border: 1px solid rgb(var(--line) / .82);
+  border-radius: 1.25rem;
+  background: linear-gradient(145deg, rgb(var(--surface) / .94), rgb(var(--surface) / .72));
+  box-shadow: 0 14px 38px rgb(0 0 0 / .1), inset 0 1px rgb(255 255 255 / .025);
+}
+.yui-dashboard-v2 .yui-stat-card,
+.yui-dashboard-v2 .yui-reward-card {
+  border: 1px solid rgb(var(--line) / .8);
+  background: linear-gradient(145deg, rgb(var(--surface2) / .5), rgb(var(--surface) / .82));
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.yui-dashboard-v2 .yui-stat-card:hover,
+.yui-dashboard-v2 .yui-reward-card:hover {
+  transform: translateY(-2px);
+  border-color: rgb(var(--brand) / .38);
+  box-shadow: 0 12px 26px rgb(0 0 0 / .12);
+}
+.yui-dashboard-v2 .yui-key-item {
+  border-color: rgb(var(--line) / .85);
+  background: linear-gradient(110deg, rgb(var(--surface2) / .35), rgb(var(--surface) / .58));
+}
+.yui-dashboard-v2 .yui-section-block,
+.yui-dashboard-v2 .yui-usage-panel { scroll-margin-top: 1.25rem; }
+.yui-dashboard-v2 :is(button, a, input) { touch-action: manipulation; }
+.yui-dashboard-v2 :is(button, a, input):focus-visible {
+  outline: 2px solid rgb(var(--brand));
+  outline-offset: 3px;
+}
+@media (max-width: 900px) {
+  .yui-dashboard-v2 .yui-side-nav { position: static; }
+}
+@media (max-width: 640px) {
+  .yui-dashboard-v2 .yui-hero { border-radius: 1.2rem; }
+  .yui-dashboard-v2 .yui-side-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .yui-dashboard-v2 .yui-side-nav::-webkit-scrollbar { display: none; }
+  .yui-dashboard-v2 .yui-side-link { flex: 0 0 auto; white-space: nowrap; }
+  .yui-dashboard-v2 .yui-section-block,
+  .yui-dashboard-v2 .yui-usage-panel { border-radius: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .yui-dashboard-v2 *,
+  .yui-dashboard-v2 *::before,
+  .yui-dashboard-v2 *::after { scroll-behavior: auto !important; transition: none !important; }
+  .yui-dashboard-v2 .yui-stat-card:hover,
+  .yui-dashboard-v2 .yui-reward-card:hover { transform: none; }
+}

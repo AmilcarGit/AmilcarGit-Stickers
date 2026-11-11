@@ -7,22 +7,62 @@ const MAX_BODY = 1_500_000;
 const MAX_HTML_BODY = 8_000_000;
 const UA = "YuiApi/1.0 (+https://yuiapi.vercel.app)";
 
+const JSON_CACHE_TTL_MS = 30_000;
+const JSON_CACHE_MAX_ENTRIES = 100;
+const jsonCache = new Map<string, { expiresAt: number; value: unknown }>();
+const pendingJson = new Map<string, Promise<unknown>>();
+
+function cloneJson<T>(value: T): T {
+  return value === null ? value : JSON.parse(JSON.stringify(value)) as T;
+}
+
 async function getJson(fetcher: Fetcher, url: string, allowNotFound = false): Promise<unknown> {
-  let res: Response;
-  try {
-    res = await fetcher(url, { headers: { "user-agent": UA, accept: "application/json" }, signal: AbortSignal.timeout(8000) });
-  } catch {
-    throw new AppError(502, "El servicio externo no respondió a tiempo. Inténtalo otra vez.");
+  const cacheable = fetcher === globalThis.fetch;
+  if (cacheable) {
+    const cached = jsonCache.get(url);
+    if (cached && cached.expiresAt > Date.now()) {
+      jsonCache.delete(url);
+      jsonCache.set(url, cached);
+      return cloneJson(cached.value);
+    }
+    if (cached) jsonCache.delete(url);
+    const pending = pendingJson.get(url);
+    if (pending) return cloneJson(await pending);
   }
-  if (res.status === 429) throw new AppError(503, "El servicio externo está limitando las consultas. Inténtalo en unos minutos.");
-  if (res.status === 404 && allowNotFound) return null;
-  if (!res.ok) throw new AppError(502, "El servicio externo devolvió un error.");
-  const text = await res.text();
-  if (text.length > MAX_BODY) throw new AppError(502, "La respuesta del servicio externo es demasiado grande.");
+
+  const request = (async () => {
+    let res: Response;
+    try {
+      res = await fetcher(url, { headers: { "user-agent": UA, accept: "application/json" }, signal: AbortSignal.timeout(8000) });
+    } catch {
+      throw new AppError(502, "El servicio externo no respondió a tiempo. Inténtalo otra vez.");
+    }
+    if (res.status === 429) throw new AppError(503, "El servicio externo está limitando las consultas. Inténtalo en unos minutos.");
+    if (res.status === 404 && allowNotFound) return null;
+    if (!res.ok) throw new AppError(502, "El servicio externo devolvió un error.");
+    const text = await res.text();
+    if (text.length > MAX_BODY) throw new AppError(502, "La respuesta del servicio externo es demasiado grande.");
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new AppError(502, "El servicio externo devolvió datos no válidos.");
+    }
+  })();
+
+  if (cacheable) pendingJson.set(url, request);
   try {
-    return JSON.parse(text);
-  } catch {
-    throw new AppError(502, "El servicio externo devolvió datos no válidos.");
+    const value = await request;
+    if (cacheable) {
+      jsonCache.set(url, { expiresAt: Date.now() + JSON_CACHE_TTL_MS, value: cloneJson(value) });
+      while (jsonCache.size > JSON_CACHE_MAX_ENTRIES) {
+        const oldest = jsonCache.keys().next().value;
+        if (!oldest) break;
+        jsonCache.delete(oldest);
+      }
+    }
+    return value;
+  } finally {
+    if (cacheable) pendingJson.delete(url);
   }
 }
 

@@ -43,10 +43,7 @@ export async function isIpBlocked(d: Deps, rawIp: string): Promise<IpBlock | nul
   if (!rawIp || rawIp === "anon") return null;
   const ip = rawIp.trim();
   const block = await d.store.get<IpBlock>(blockKey(ip));
-  if (!block || block.expiresAt <= Date.now()) {
-    if (!block) await d.store.zrem(BLOCK_INDEX, ip);
-    return null;
-  }
+  if (!block || block.expiresAt <= Date.now()) return null;
   return block;
 }
 

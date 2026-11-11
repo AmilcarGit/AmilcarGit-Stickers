@@ -131,7 +131,7 @@ function DashboardInner() {
   const memberSince = user?.createdAt ? new Date(user.createdAt).toLocaleDateString("es-PE", { month: "long", year: "numeric" }) : "Miembro YuiAPI";
 
   return (
-    <div className="yui-dashboard mx-auto max-w-6xl space-y-6">
+    <div className="yui-dashboard yui-dashboard-v2 mx-auto max-w-6xl space-y-6">
       <VerifyBanner />
 
       <section className="yui-hero" aria-label="Bienvenida">

@@ -11,6 +11,7 @@ import { ThemeToggle } from "./ThemeToggle";
 
 const links = [
   { href: "/endpoints", label: "Endpoints" },
+  { href: "/developer", label: "Developer Studio" },
   { href: "/docs", label: "Docs" },
   { href: "/ranking", label: "Ranking" },
   { href: "/dashboard", label: "Mi panel" },

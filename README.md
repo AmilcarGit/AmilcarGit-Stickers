@@ -25,6 +25,23 @@ Producción: <https://yuiapi.vercel.app>
 
 La clave se envía en `x-api-key`, `Authorization: Bearer …` o `?apikey=` (evítalo en URLs). Respuestas `{ ok: true, … }` / `{ ok: false, error }`, con cabeceras `x-ratelimit-*` y CORS abierto.
 
+## Developer Studio
+
+La ruta `/developer` incorpora un espacio de trabajo para probar los endpoints del catálogo real de YuiAPI.
+
+- **Request Builder:** ejecuta solicitudes GET y POST, incluyendo los endpoints que reciben archivos, y muestra código HTTP, duración y respuesta.
+- **Historial y colecciones locales:** conserva hasta 20 ejecuciones y 50 solicitudes guardadas en el navegador. No sincroniza estos datos entre dispositivos y nunca guarda la API Key.
+- **Generador de ejemplos:** crea snippets de JavaScript, Python y cURL desde el endpoint seleccionado. Son plantillas de integración, no paquetes SDK publicados.
+- **OpenAPI:** `GET /api/openapi` genera la especificación OpenAPI 3.1 desde `src/lib/endpoints.ts`.
+- **Gestión de claves:** las rutas autenticadas permiten rotar una clave, ajustar límites por clave y consultar su uso diario:
+  - `POST /api/keys/{id}/rotate`
+  - `PATCH /api/keys/{id}/limits`
+  - `GET /api/keys/{id}/usage`
+- **Monitor manual:** el Request Builder permite comprobar un endpoint cuando el desarrollador ejecuta una solicitud. No es un monitor programado ni una garantía de disponibilidad.
+- **Seguridad y métricas existentes:** se reutilizan el Security Center de administración y las estadísticas de uso que ya ofrece la aplicación.
+
+> **Alcance:** el envío automático de webhooks, la analítica global persistente y los SDK publicados como paquetes independientes requieren componentes adicionales y no se presentan como funciones terminadas en esta entrega.
+
 
 ## YuiAPI AI Ecosystem
 

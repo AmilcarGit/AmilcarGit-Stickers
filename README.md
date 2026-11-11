@@ -25,6 +25,91 @@ Producción: <https://yuiapi.vercel.app>
 
 La clave se envía en `x-api-key`, `Authorization: Bearer …` o `?apikey=` (evítalo en URLs). Respuestas `{ ok: true, … }` / `{ ok: false, error }`, con cabeceras `x-ratelimit-*` y CORS abierto.
 
+
+## YuiAPI AI Ecosystem
+
+**YuiAPI AI Ecosystem** es la iniciativa para convertir YuiAPI en un centro de conocimiento y creación de herramientas para desarrolladores de bots. Su objetivo es que asistentes como Claude y otros agentes compatibles puedan consultar documentación técnica, entender distintos frameworks y ayudar a generar comandos adaptados a la estructura real de cada proyecto.
+
+> **Estado:** proyecto planificado. Las funciones descritas en esta sección son objetivos de desarrollo; no forman parte todavía de la API disponible en producción.
+
+### Objetivos
+
+- **Yui Assistant:** asistente integrado en la plataforma para orientar a los desarrolladores y ayudarles a construir comandos.
+- **YuiAPI MCP Server:** interfaz basada en Model Context Protocol (MCP) para que clientes compatibles, como Claude, puedan consultar herramientas y documentación de YuiAPI.
+- **Knowledge Hub:** catálogo de documentación técnica indexada, con fuentes, versiones y ejemplos.
+- **Framework Registry:** adaptadores ampliables para frameworks de WhatsApp, Telegram, Discord y proyectos personalizados.
+- **Command Engine:** generación de archivos de comandos, configuración, dependencias e instrucciones de integración.
+- **Code Validator:** comprobaciones de estructura, sintaxis, imports y compatibilidad antes de entregar el código.
+
+### Flujo de trabajo previsto
+
+1. El desarrollador indica qué bot utiliza o proporciona la estructura y los archivos relevantes de su proyecto.
+2. El sistema identifica el framework y la versión cuando la información está disponible.
+3. El agente consulta la documentación y los ejemplos correspondientes en el Knowledge Hub.
+4. El Command Engine prepara los archivos solicitados siguiendo la estructura detectada.
+5. El Validator revisa el resultado y señala cualquier incompatibilidad o requisito pendiente.
+6. El desarrollador recibe el código, los archivos y las instrucciones para integrarlo y probarlo.
+
+El sistema deberá indicar qué información verificó y qué partes son supuestos. No debe inventar métodos, eventos ni opciones de una librería cuando no estén respaldados por documentación.
+
+### Compatibilidad prevista
+
+| Ecosistema | Frameworks y fuentes que se evaluarán |
+| --- | --- |
+| WhatsApp | Baileys, WPPConnect, Venom y otros proyectos compatibles |
+| Telegram | Telegram Bot API, Telegraf y grammY |
+| Discord | Discord.js y otras librerías compatibles |
+| Personalizados | Proyectos propios y documentación aportada por el desarrollador |
+
+La compatibilidad será progresiva y dependerá de la documentación disponible, las versiones y las pruebas de cada adaptador. No se promete compatibilidad automática con cualquier bot sin analizar su código.
+
+### Integraciones de IA
+
+La arquitectura contempla dos modalidades complementarias:
+
+- **Asistente propio:** experiencia de ayuda dentro de la web de YuiAPI. La conexión a un modelo de IA se definirá mediante proveedores configurables; no se presupone que exista un modelo propio ni una conexión activa actualmente.
+- **MCP para agentes externos:** servidor que expondrá herramientas controladas para buscar documentación, consultar frameworks, revisar endpoints y solicitar la generación o validación de comandos.
+
+Herramientas MCP previstas:
+
+| Herramienta | Propósito |
+| --- | --- |
+| `search_docs` | Buscar en la documentación indexada |
+| `get_framework` | Consultar información y versiones de un framework |
+| `get_api_endpoint` | Obtener detalles del catálogo de endpoints de YuiAPI |
+| `inspect_bot` | Analizar archivos y estructura proporcionados por el usuario |
+| `generate_command` | Proponer los archivos de un comando |
+| `validate_command` | Revisar el código generado |
+| `get_examples` | Recuperar ejemplos documentados |
+
+### Seguridad y límites
+
+- Las API Keys actuales y la autenticación de cuentas deberán conservar su funcionamiento.
+- El acceso a herramientas MCP requerirá autenticación, permisos y límites de uso.
+- Las claves de proveedores de IA, si se incorporan, se almacenarán únicamente en el servidor.
+- Los documentos externos y archivos aportados se tratarán como contenido no confiable.
+- El código generado no se ejecutará automáticamente.
+- Cualquier escritura en un repositorio, instalación de dependencias o despliegue requerirá autorización explícita.
+- Se registrarán las fuentes y versiones utilizadas para facilitar la revisión de resultados.
+
+### Roadmap
+
+| Etapa | Trabajo | Estado |
+| --- | --- | --- |
+| 1 | Knowledge Hub y catálogo de frameworks | Planificado |
+| 2 | Command Engine y Code Validator | Planificado |
+| 3 | Yui Assistant integrado en la web | Planificado |
+| 4 | Servidor MCP para Claude y otros clientes compatibles | Planificado |
+| 5 | Historial, permisos, límites y ampliación de adaptadores | Planificado |
+
+El desarrollo se realizará por etapas y con pruebas independientes. Se priorizará reutilizar el catálogo de endpoints existente en `src/lib/endpoints.ts` y la infraestructura actual antes de introducir servicios o bases de datos adicionales.
+
+### Referencias
+
+- [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
+- [Documentación de Claude](https://docs.anthropic.com/)
+- [Repositorio de YuiAPI](https://github.com/AmilcarGit/AmilcarGit-Stickers)
+
 ## Stack
 
 Next.js 15 (App Router) · TypeScript · Tailwind · Upstash Redis (REST) · cuentas propias (`scrypt`, cookie `HttpOnly` firmada) · nodemailer (SMTP) · sharp · qrcode · Vitest · GitHub Actions · Vercel.

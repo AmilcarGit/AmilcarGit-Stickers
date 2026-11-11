@@ -54,7 +54,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             Saltar al contenido
           </a>
           <Header />
-          <main id="contenido" className="mx-auto w-full max-w-6xl px-4 py-8">
+          <main id="contenido" className="mx-auto w-full max-w-[1440px] px-4 py-8">
             {children}
           </main>
           <Footer />

@@ -12,7 +12,7 @@ import { ThemeToggle } from "./ThemeToggle";
 const links = [
   { href: "/endpoints", label: "Endpoints" },
   { href: "/developer", label: "Developer Studio" },
-  { href: "/docs", label: "Docs" },
+  { href: "/docs", label: "Documentación" },
   { href: "/ranking", label: "Ranking" },
   { href: "/dashboard", label: "Mi panel" },
   { href: "/settings", label: "Mi perfil" },
@@ -36,104 +36,72 @@ export function Header() {
     }
   }
 
+  const active = (href: string) => pathname === href || (href !== "/" && pathname.startsWith(href + "/"));
+
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-bg/80 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
-        <Link href="/" className="flex items-center gap-2 text-xl" aria-label="YuiApi, inicio">
-          <Mascot size={36} />
-          <Wordmark />
+    <header className="yui-topbar">
+      <div className="yui-topbar-inner">
+        <Link href="/" className="yui-brand" aria-label="YuiAPI, inicio">
+          <span className="yui-brand-mark"><Mascot size={34} /></span>
+          <span className="hidden min-[390px]:inline-flex"><Wordmark /></span>
         </Link>
 
-        <nav className="ml-4 hidden items-center gap-1 md:flex" aria-label="Principal">
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={`rounded-lg px-3 py-2 text-sm font-medium hover:bg-surface2 ${pathname.startsWith(l.href) ? "text-accent" : "text-ink"}`}
-            >
-              {l.label}
+        <nav className="yui-nav ml-2 hidden lg:flex" aria-label="Principal">
+          {links.map((link) => (
+            <Link key={link.href} href={link.href} className="yui-nav-link" aria-current={active(link.href) ? "page" : undefined}>
+              {link.label}
             </Link>
           ))}
           {admin && (
             <>
-              <Link href="/admin" className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-surface2">
-                Admin
-              </Link>
-              <Link href="/admin/security" className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-surface2">Seguridad</Link>
+              <Link href="/admin" className="yui-nav-link" aria-current={active("/admin") ? "page" : undefined}>Administración</Link>
+              <Link href="/admin/security" className="yui-nav-link" aria-current={active("/admin/security") ? "page" : undefined}>Seguridad</Link>
             </>
           )}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
-          <InstallButton />
+        <div className="yui-header-actions">
+          <span className="hidden xl:inline-flex"><InstallButton /></span>
           <ThemeToggle />
           {!loading && !user && (
             <>
-              <Link href="/login" className="btn-ghost !min-h-[40px] hidden sm:inline-flex">
-                Entrar
-              </Link>
-              <Link href="/register" className="btn-primary !min-h-[40px]">
-                Crear cuenta
-              </Link>
+              <Link href="/login" className="btn-ghost hidden !min-h-[40px] sm:inline-flex">Entrar</Link>
+              <Link href="/register" className="btn-primary !min-h-[40px]">Crear cuenta</Link>
             </>
           )}
           {user && (
             <>
               <Link href="/settings" className="hidden items-center gap-2 sm:flex" aria-label="Mi cuenta">
-                <Avatar username={user.username} name={user.displayName} v={user.avatarV} size={36} />
+                <Avatar username={user.username} name={user.displayName} v={user.avatarV} size={34} />
               </Link>
-              <button type="button" onClick={logout} className="btn-ghost !min-h-[40px] hidden sm:inline-flex">
-                Salir
-              </button>
+              <button type="button" onClick={logout} className="btn-ghost hidden !min-h-[40px] sm:inline-flex">Salir</button>
             </>
           )}
-          <button
-            type="button"
-            className="btn-ghost !min-h-[40px] !px-3 md:hidden"
-            aria-expanded={open}
-            aria-controls="menu-movil"
-            aria-label="Abrir menú"
-            onClick={() => setOpen((o) => !o)}
-          >
+          <button type="button" className="btn-ghost !min-h-[40px] !px-3 lg:hidden" aria-expanded={open} aria-controls="yui-mobile-menu" aria-label={open ? "Cerrar menú" : "Abrir menú"} onClick={() => setOpen((value) => !value)}>
             <span aria-hidden="true">{open ? "✕" : "☰"}</span>
           </button>
         </div>
       </div>
 
       {open && (
-        <nav id="menu-movil" className="border-t border-line bg-bg px-4 py-3 md:hidden" aria-label="Menú móvil">
-          <ul className="flex flex-col gap-1">
-            {links.map((l) => (
-              <li key={l.href}>
-                <Link href={l.href} className="block rounded-lg px-3 py-3 font-medium hover:bg-surface2">
-                  {l.label}
-                </Link>
-              </li>
+        <nav id="yui-mobile-menu" className="yui-mobile-menu lg:hidden" aria-label="Menú móvil">
+          <div className="mx-auto grid max-w-6xl gap-1 sm:grid-cols-2">
+            {links.map((link) => (
+              <Link key={link.href} href={link.href} aria-current={active(link.href) ? "page" : undefined}>{link.label}</Link>
             ))}
             {admin && (
               <>
-                <li>
-                  <Link href="/admin" className="block rounded-lg px-3 py-3 font-medium hover:bg-surface2">
-                    Admin
-                  </Link>
-                </li>
-                <li><Link href="/admin/security" className="block rounded-lg px-3 py-3 font-medium hover:bg-surface2">Centro de seguridad</Link></li>
+                <Link href="/admin" aria-current={active("/admin") ? "page" : undefined}>Administración</Link>
+                <Link href="/admin/security" aria-current={active("/admin/security") ? "page" : undefined}>Centro de seguridad</Link>
               </>
             )}
             {user ? (
-              <li>
-                <button type="button" onClick={logout} className="block w-full rounded-lg px-3 py-3 text-left font-medium hover:bg-surface2">
-                  Cerrar sesión
-                </button>
-              </li>
+              <button type="button" onClick={logout} className="rounded-lg px-3 py-3 text-left text-sm font-semibold text-danger hover:bg-danger/10">Cerrar sesión</button>
             ) : (
-              <li>
-                <Link href="/login" className="block rounded-lg px-3 py-3 font-medium hover:bg-surface2">
-                  Iniciar sesión
-                </Link>
-              </li>
+              <Link href="/login">Iniciar sesión</Link>
             )}
-          </ul>
+            <span className="sm:hidden"><InstallButton /></span>
+          </div>
         </nav>
       )}
     </header>

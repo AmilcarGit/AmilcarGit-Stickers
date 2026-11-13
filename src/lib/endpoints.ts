@@ -2,7 +2,7 @@
 export type Param = { name: string; label: string; example: string; options?: string[] };
 export type Endpoint = {
   id: string;
-  group: "Stickers" | "Utilidades" | "Búsqueda" | "Descargas y archivos" | "Imágenes" | "Generadores" | "Desarrolladores" | "Cuenta";
+  group: "Stickers" | "Utilidades" | "Búsqueda" | "Descargas y archivos" | "Imágenes" | "Generadores" | "Desarrolladores" | "Cuenta" | "Anime y Dragon Ball" | "Entretenimiento";
   method: "GET" | "POST";
   path: string;
   what: string;
@@ -39,6 +39,24 @@ export const ENDPOINTS: Endpoint[] = [
   { id: "youtube-search", group: "Búsqueda", method: "GET", path: "/api/v1/search/youtube", what: "Busca videos públicos de YouTube por texto y devuelve título, canal, duración, miniatura y enlace original. Los resultados dependen de la disponibilidad de la búsqueda pública de YouTube.", params: [q("música peruana"), limit], returns: "json" },
   { id: "pinterest-search", group: "Búsqueda", method: "GET", path: "/api/v1/search/pinterest", what: "Busca Pines públicos de Pinterest por texto y devuelve título, imagen previa y enlace cuando Pinterest expone esos datos.", params: [q("fondos anime"), limit], returns: "json" },
 
+  { id: "dragonball-characters", group: "Anime y Dragon Ball", method: "GET", path: "/api/v1/dragonball/characters", what: "Busca personajes de Dragon Ball y devuelve ficha, imagen, ki y transformaciones disponibles. Fuente comunitaria; no es una API oficial de Toei.", params: [q("Goku"), limit], returns: "json" },
+  { id: "dragonball-character", group: "Anime y Dragon Ball", method: "GET", path: "/api/v1/dragonball/character", what: "Obtiene la ficha completa de un personaje por id.", params: [{ name: "id", label: "Id del personaje", example: "1" }], returns: "json" },
+  { id: "dragonball-planets", group: "Anime y Dragon Ball", method: "GET", path: "/api/v1/dragonball/planets", what: "Lista planetas del universo Dragon Ball con descripción, imagen y personajes relacionados.", params: [limit], returns: "json" },
+  { id: "dragonball-random", group: "Anime y Dragon Ball", method: "GET", path: "/api/v1/dragonball/random", what: "Devuelve un personaje aleatorio de Dragon Ball.", params: [], returns: "json" },
+  ...(["anime", "meme", "wallpaper", "waifu", "quote", "fact", "joke", "cosplay"] as const).map((kind) => ({
+    id: "random-" + kind, group: "Entretenimiento" as const, method: "GET" as const, path: "/api/v1/random/" + kind,
+    what: ({
+      anime: "Anime aleatorio con ficha y enlace a MyAnimeList (Jikan).",
+      meme: "Meme aleatorio con enlace a la publicación original.",
+      wallpaper: "Imagen aleatoria de anime con autor y licencia identificados (Openverse).",
+      waifu: "Ilustración aleatoria de waifu (waifu.pics).",
+      quote: "Frase aleatoria de la colección propia de YuiAPI.",
+      fact: "Dato curioso aleatorio de la colección propia de YuiAPI.",
+      joke: "Chiste aleatorio de la colección propia de YuiAPI.",
+      cosplay: "Imagen aleatoria de cosplay con información de licencia (Openverse).",
+    } as Record<string, string>)[kind],
+    params: [], returns: "json" as const,
+  })),
   upload("file-info", "Descargas y archivos", "file-info", "Analiza un archivo local: nombre, tamaño, MIME y metadatos básicos de imagen."),
   upload("file-base64", "Descargas y archivos", "file-base64", "Convierte un archivo adjunto a Base64 y devuelve sus metadatos."),
   { id: "youtube-audio", group: "Descargas y archivos", method: "GET", path: "/api/v1/download/ytaudio", what: "Prepara el audio MP3 de un enlace público de YouTube y lo entrega como archivo descargable (límite configurado de 800 MB).", params: [{ name: "url", label: "URL de YouTube", example: "https://www.youtube.com/watch?v=VIDEO_ID" }], returns: "file" },
@@ -62,7 +80,7 @@ export const ENDPOINTS: Endpoint[] = [
   { id: "me", group: "Cuenta", method: "GET", path: "/api/v1/me", what: "Consulta tu plan y las solicitudes que te quedan hoy.", params: [], returns: "json" },
 ];
 
-export const GROUPS = ["Stickers", "Utilidades", "Búsqueda", "Descargas y archivos", "Imágenes", "Generadores", "Desarrolladores", "Cuenta"] as const;
+export const GROUPS = ["Stickers", "Utilidades", "Búsqueda", "Descargas y archivos", "Imágenes", "Generadores", "Desarrolladores", "Cuenta", "Anime y Dragon Ball", "Entretenimiento"] as const;
 
 export function buildUrl(e: Endpoint, values: Record<string, string>): string {
   const sp = new URLSearchParams();

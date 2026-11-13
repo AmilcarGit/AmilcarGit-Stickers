@@ -39,7 +39,7 @@ export default function EndpointsPage() {
   const [showFavorites, setShowFavorites] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showDocs, setShowDocs] = useState(true);
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(["Stickers", "Utilidades"]);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(["Stickers", "Utilidades", "Búsqueda", "Descargas y archivos", "Anime y Dragon Ball", "Entretenimiento"]);
   const [showApiKey, setShowApiKey] = useState(false);
   const [jsonNotice, setJsonNotice] = useState("");
   const [duration, setDuration] = useState<number | null>(null);
@@ -212,6 +212,7 @@ export default function EndpointsPage() {
             const folderIcons: Record<string, string> = {
               "Stickers": "✳", "Búsqueda": "⌕", "Descargas y archivos": "⇩",
               "Imágenes": "▧", "Generadores": "✣", "Desarrolladores": "{ }", "Cuenta": "◉",
+              "Anime y Dragon Ball": "✦", "Entretenimiento": "♫",
             };
             return <section key={group} className="overflow-hidden rounded-xl border border-line bg-surface/60">
               <button
@@ -235,7 +236,7 @@ export default function EndpointsPage() {
                   <button type="button" aria-label="Alternar favorito" onClick={() => toggleFavorite(endpoint.id)} className={"px-2 py-1 text-sm " + (favorites.includes(endpoint.id) ? "text-amber-400" : "text-muted")}>{favorites.includes(endpoint.id) ? "★" : "☆"}</button>
                 </div>
               </li>)}</ul>}
-              {group === "Descargas y archivos" && expanded && <p className="border-t border-line px-3 py-2 text-[10px] leading-relaxed text-muted">Incluye descargas de YouTube (audio y video) y resolución de medios públicos de Pinterest. Límite configurado: hasta 800 MB por archivo. La velocidad y disponibilidad dependen del proveedor externo y de que el Pin exponga un archivo multimedia directo.</p>}
+              {group === "Descargas y archivos" && expanded && <p className="border-t border-line px-3 py-2 text-[10px] leading-relaxed text-muted">Incluye archivos y descargas compatibles de YouTube (audio y video) y Pinterest. La disponibilidad depende de cada proveedor externo y del acceso al contenido público.</p>}
             </section>;
           })}
           {!filteredEndpoints.length && <p className="rounded-xl border border-line p-3 text-xs text-muted">No hay endpoints que coincidan.</p>}

@@ -17,7 +17,9 @@ Producción: <https://yuiapi.vercel.app>
 ## Qué ofrece
 
 - **Stickers:** `POST /api/v1/sticker` convierte una imagen o GIF en WebP 512×512 transparente dentro del peso de WhatsApp (≤100 KB estático, ≤500 KB animado); `GET /api/v1/sticker/search` busca en Giphy (requiere tu propia `GIPHY_API_KEY`; hay que mostrar «Powered by GIPHY»).
-- **Búsqueda:** música (Apple iTunes Search, fragmento oficial de 30 s), anime (Jikan), Wikipedia, libros (Open Library) e imágenes con licencia abierta (Openverse).
+- **Búsqueda:** música (Apple iTunes Search, fragmento oficial de 30 s), anime (Jikan), Wikipedia, libros (Open Library), imágenes con licencia abierta (Openverse), YouTube y Pinterest.
+- **Dragon Ball:** `GET /api/v1/dragonball/characters?q=Goku`, `/character?id=1`, `/planets` y `/random`. Usa Dragon Ball API comunitaria; no es un servicio oficial de Toei.
+- **Entretenimiento:** `GET /api/v1/random/anime`, `meme`, `wallpaper`, `waifu`, `quote`, `fact`, `joke` y `cosplay`. Las imágenes de Openverse incluyen autor/licencia cuando el proveedor los devuelve; las frases, datos y chistes son una colección propia.
 - **Herramientas:** QR, hash, UUID, Base64, contraseñas.
 - **Claves:** `amk_…`, guardadas solo como hash SHA-256 y mostradas una vez; máx. 5 por cuenta y correo verificado. Planes Free (100/día, 30/min), Pro (2 000/día, 120/min), Ultra (10 000/día, 300/min); reinicio a medianoche de Lima. Los cambia un administrador desde `/admin`. **No hay cobros implementados.**
 - **Perfil y ranking:** cada persona puede subir una foto (se recorta a 256×256 WebP y se guarda en Redis, máx. 2 MB). `/ranking` muestra el top 10 del mes por solicitudes exitosas (hora de Lima); se puede salir del ranking desde Mi cuenta y nunca expone correo.

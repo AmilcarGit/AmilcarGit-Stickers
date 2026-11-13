@@ -12,6 +12,8 @@ const groupInfo: Record<(typeof GROUPS)[number], { icon: string; text: string }>
   Generadores: { icon: "✳", text: "QR, hashes, UUID y contraseñas seguras." },
   Desarrolladores: { icon: "{ }", text: "JSON, URL y Base64 a una llamada de distancia." },
   Cuenta: { icon: "◎", text: "Consulta tu plan y lo que te queda hoy." },
+  "Anime y Dragon Ball": { icon: "✦", text: "Personajes, fichas, planetas y contenido del universo Dragon Ball." },
+  Entretenimiento: { icon: "♫", text: "Anime, memes, wallpapers, waifus, frases, curiosidades y humor." },
 };
 
 const examples = [
@@ -35,7 +37,7 @@ export default function HomePage() {
           <span className="yui-home-eyebrow"><span className="yui-live-dot" /> API TOOLKIT · PARA DEVELOPERS</span>
           <h1 className="yui-home-title">Una API. <span>Más posibilidades.</span></h1>
           <p className="yui-home-lead">
-            Construye bots y aplicaciones con endpoints para stickers, búsqueda, utilidades y herramientas.
+            Construye bots y aplicaciones con endpoints para stickers, descargas, anime, Dragon Ball, entretenimiento, búsqueda y herramientas.
             Una plataforma clara para integrar, probar y administrar tus solicitudes.
           </p>
           <div className="yui-home-actions">

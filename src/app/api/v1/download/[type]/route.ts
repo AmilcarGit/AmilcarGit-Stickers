@@ -162,15 +162,9 @@ export const GET = v1With<{ type: string }>(async ({ url }, { type }) => {
     if (type === "ytvideo" && !["360", "480", "720", "1080"].includes(quality)) throw new AppError(400, "La calidad debe ser 360, 480, 720 o 1080.");
     const kind = type === "ytaudio" ? "audio" : "video";
     const data = await createYoutubeDownload(id, kind, quality);
-    // Redirect the client to the provider CDN instead of proxying the entire video through Vercel.
-    // This reduces latency and avoids cutting long downloads off at the function-duration limit.
-    return new Response(null, {
-      status: 302,
-      headers: {
-        location: data.downloadUrl,
-        "cache-control": "no-store"
-      }
-    });
+    // Keep the download on the API origin: the dashboard uses fetch() + Blob,
+    // and a cross-origin CDN redirect can fail browser CORS checks.
+    return streamMedia(data.downloadUrl, `youtube-${id}`, kind);
   }
 
   if (type === "pinterest") {

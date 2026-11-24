@@ -3,7 +3,7 @@ import { AppError } from "@/server/errors";
 import { preflight, v1With } from "@/server/v1";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 export const OPTIONS = preflight;
 
 const SAVE_TUBE_KEY = process.env.SAVETUBE_KEY || "C5D58EF67A7584E4A29F6C35BBC4EB12";
@@ -21,11 +21,6 @@ function youtubeId(raw: string): string | null {
   } catch {
     return null;
   }
-}
-
-function safeFilename(value: string, fallback: string): string {
-  const clean = value.normalize("NFKD").replace(/[^\w .()-]/g, "").trim().replace(/[ .]+/g, "_").slice(0, 90);
-  return (clean || fallback).replace(/\.(mp3|mp4|webm|m4a)$/i, "");
 }
 
 async function timedFetch(input: string | URL, init: RequestInit = {}, timeout = REQUEST_TIMEOUT): Promise<Response> {
@@ -167,7 +162,15 @@ export const GET = v1With<{ type: string }>(async ({ url }, { type }) => {
     if (type === "ytvideo" && !["360", "480", "720", "1080"].includes(quality)) throw new AppError(400, "La calidad debe ser 360, 480, 720 o 1080.");
     const kind = type === "ytaudio" ? "audio" : "video";
     const data = await createYoutubeDownload(id, kind, quality);
-    return streamMedia(data.downloadUrl, safeFilename(data.title, `youtube-${id}`), kind);
+    // Redirect the client to the provider CDN instead of proxying the entire video through Vercel.
+    // This reduces latency and avoids cutting long downloads off at the function-duration limit.
+    return new Response(null, {
+      status: 302,
+      headers: {
+        location: data.downloadUrl,
+        "cache-control": "no-store"
+      }
+    });
   }
 
   if (type === "pinterest") {

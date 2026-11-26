@@ -8,7 +8,8 @@ export const OPTIONS = preflight;
 
 const SAVE_TUBE_KEY = process.env.SAVETUBE_KEY || "C5D58EF67A7584E4A29F6C35BBC4EB12";
 const MAX_DOWNLOAD = 800 * 1024 * 1024;
-const REQUEST_TIMEOUT = 18_000;
+const REQUEST_TIMEOUT = 30_000;
+const STREAM_TIMEOUT = 110_000;
 
 function youtubeId(raw: string): string | null {
   try {
@@ -98,7 +99,7 @@ async function createYoutubeDownload(id: string, kind: "audio" | "video", qualit
       cdnCache = null;
     }
   }
-  console.error("YouTube provider error:", lastError instanceof Error ? lastError.message : "unknown");
+  console.error("YouTube provider error:", lastError instanceof Error ? lastError.message : String(lastError ?? "unknown"));
   throw new AppError(502, "No se pudo preparar la descarga de YouTube. Inténtalo más tarde.");
 }
 
@@ -140,7 +141,7 @@ function attachment(response: Response, filename: string, contentType: string): 
 }
 
 async function streamMedia(url: string, name: string, expected: "audio" | "video" | "pinterest"): Promise<Response> {
-  const response = await timedFetch(url, { headers: { "user-agent": "Mozilla/5.0 (compatible; YuiAPI/1.0)" } }, 55_000);
+  const response = await timedFetch(url, { headers: { "user-agent": "Mozilla/5.0 (compatible; YuiAPI/1.0)" } }, STREAM_TIMEOUT);
   if (!response.ok) throw new AppError(502, "El servidor de archivos no pudo entregar la descarga.");
   const type = (response.headers.get("content-type") || "application/octet-stream").split(";")[0].toLowerCase();
   const allowed = expected === "audio" ? type.startsWith("audio/") || type === "application/octet-stream"

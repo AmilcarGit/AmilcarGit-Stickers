@@ -55,7 +55,8 @@ async function getSaveTubeCdn(force = false): Promise<string> {
 
 async function createYoutubeDownload(id: string, kind: "audio" | "video", quality: string) {
   let lastError: unknown;
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 700 * attempt));
     try {
       const cdn = await getSaveTubeCdn(attempt > 0);
       const infoResponse = await timedFetch(`https://${cdn}/v2/info`, {
@@ -72,25 +73,26 @@ async function createYoutubeDownload(id: string, kind: "audio" | "video", qualit
       const infoPayload = await infoResponse.json() as { data?: string };
       if (!infoPayload.data) throw new Error("El proveedor no devolvió información del video.");
       const info = decryptSaveTube(infoPayload.data);
-      const downloadResponse = await timedFetch(`https://${cdn}/download`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          origin: "https://yt.savetube.me",
-          referer: "https://yt.savetube.me/",
-          "user-agent": "Mozilla/5.0 (compatible; YuiAPI/1.0)"
-        },
-        body: JSON.stringify({
-          id,
-          downloadType: kind,
-          quality: kind === "audio" ? "128" : quality,
-          key: info.key
-        })
-      });
-      if (!downloadResponse.ok) throw new Error("El proveedor no pudo preparar el archivo.");
-      const payload = await downloadResponse.json() as { data?: { downloadUrl?: string } };
-      const downloadUrl = payload.data?.downloadUrl;
-      if (!downloadUrl) throw new Error("El proveedor no devolvió un enlace de descarga.");
+      // Si la calidad pedida no está disponible, se prueba con las más bajas (360 casi siempre existe).
+      const qualities = kind === "audio" ? ["128"] : QUALITIES.filter((q) => Number(q) <= Number(quality));
+      let downloadUrl: string | undefined;
+      for (const q of qualities.length ? qualities : ["360"]) {
+        const downloadResponse = await timedFetch(`https://${cdn}/download`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            origin: "https://yt.savetube.me",
+            referer: "https://yt.savetube.me/",
+            "user-agent": "Mozilla/5.0 (compatible; YuiAPI/1.0)"
+          },
+          body: JSON.stringify({ id, downloadType: kind, quality: q, key: info.key })
+        }).catch(() => null);
+        if (!downloadResponse?.ok) continue;
+        const payload = await downloadResponse.json().catch(() => ({})) as { data?: { downloadUrl?: string } };
+        downloadUrl = payload.data?.downloadUrl;
+        if (downloadUrl) break;
+      }
+      if (!downloadUrl) throw new Error("El proveedor no pudo preparar el archivo.");
       const parsedUrl = new URL(downloadUrl);
       if (parsedUrl.protocol !== "https:") throw new Error("El enlace de descarga no es seguro.");
       return { downloadUrl, title: info.title || `youtube-${id}`, duration: info.duration ?? null, thumbnail: info.thumbnail || `https://i.ytimg.com/vi/${id}/hqdefault.jpg` };
@@ -150,6 +152,27 @@ async function streamMedia(url: string, name: string, expected: "audio" | "video
   if (!allowed) throw new AppError(502, "El proveedor devolvió un formato de archivo no compatible.");
   const ext = type.includes("mpeg") ? "mp3" : type.includes("mp4") ? "mp4" : type.includes("webp") ? "webp" : type.includes("png") ? "png" : type.includes("jpeg") ? "jpg" : type.includes("gif") ? "gif" : expected === "audio" ? "mp3" : "mp4";
   return attachment(response, `${name}.${ext}`, type);
+}
+
+/** Descarga con el servicio yt-dlp propio (YTDLP_URL + YTDLP_SHARED_SECRET). Devuelve null si no está configurado o falla. */
+async function downloadWithYtdlp(rawUrl: string, quality: string): Promise<Response | null> {
+  const base = process.env.YTDLP_URL;
+  const secret = process.env.YTDLP_SHARED_SECRET;
+  if (!base || !secret) return null;
+  try {
+    const response = await timedFetch(new URL("/download", base), {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-ytdlp-token": secret },
+      body: JSON.stringify({ url: rawUrl, quality: Number(quality) })
+    }, 100_000);
+    if (!response.ok) return null;
+    const type = (response.headers.get("content-type") || "").split(";")[0].toLowerCase();
+    if (!type.startsWith("video/") && type !== "application/octet-stream") return null;
+    return attachment(response, "youtube.mp4", "video/mp4");
+  } catch (error) {
+    console.error("yt-dlp service error:", error instanceof Error ? error.message : "unknown");
+    return null;
+  }
 }
 
 export const GET = v1With<{ type: string }>(async ({ url }, { type }) => {

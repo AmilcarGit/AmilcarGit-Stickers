@@ -10,6 +10,7 @@ const SAVE_TUBE_KEY = process.env.SAVETUBE_KEY || "C5D58EF67A7584E4A29F6C35BBC4E
 const MAX_DOWNLOAD = 800 * 1024 * 1024;
 const REQUEST_TIMEOUT = 30_000;
 const STREAM_TIMEOUT = 110_000;
+const QUALITIES = ["1080", "720", "480", "360"];
 
 function youtubeId(raw: string): string | null {
   try {
@@ -152,27 +153,6 @@ async function streamMedia(url: string, name: string, expected: "audio" | "video
   if (!allowed) throw new AppError(502, "El proveedor devolvió un formato de archivo no compatible.");
   const ext = type.includes("mpeg") ? "mp3" : type.includes("mp4") ? "mp4" : type.includes("webp") ? "webp" : type.includes("png") ? "png" : type.includes("jpeg") ? "jpg" : type.includes("gif") ? "gif" : expected === "audio" ? "mp3" : "mp4";
   return attachment(response, `${name}.${ext}`, type);
-}
-
-/** Descarga con el servicio yt-dlp propio (YTDLP_URL + YTDLP_SHARED_SECRET). Devuelve null si no está configurado o falla. */
-async function downloadWithYtdlp(rawUrl: string, quality: string): Promise<Response | null> {
-  const base = process.env.YTDLP_URL;
-  const secret = process.env.YTDLP_SHARED_SECRET;
-  if (!base || !secret) return null;
-  try {
-    const response = await timedFetch(new URL("/download", base), {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-ytdlp-token": secret },
-      body: JSON.stringify({ url: rawUrl, quality: Number(quality) })
-    }, 100_000);
-    if (!response.ok) return null;
-    const type = (response.headers.get("content-type") || "").split(";")[0].toLowerCase();
-    if (!type.startsWith("video/") && type !== "application/octet-stream") return null;
-    return attachment(response, "youtube.mp4", "video/mp4");
-  } catch (error) {
-    console.error("yt-dlp service error:", error instanceof Error ? error.message : "unknown");
-    return null;
-  }
 }
 
 export const GET = v1With<{ type: string }>(async ({ url }, { type }) => {

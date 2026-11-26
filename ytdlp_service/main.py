@@ -5,6 +5,8 @@ import tempfile
 from pathlib import Path
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
+import shutil
 from pydantic import BaseModel, HttpUrl
 import yt_dlp
 
@@ -66,7 +68,7 @@ def download(body: DownloadRequest, x_ytdlp_token: str | None = Header(default=N
                 str(filename),
                 media_type="video/mp4",
                 filename=f"youtube-{safe_id}.mp4",
-                background=None,
+                background=BackgroundTask(shutil.rmtree, temp_dir, ignore_errors=True),
             )
     except Exception as exc:
         import shutil

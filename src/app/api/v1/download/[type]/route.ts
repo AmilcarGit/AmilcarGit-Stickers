@@ -161,11 +161,30 @@ export const GET = v1With<{ type: string }>(async ({ url }, { type }) => {
     if (!id) throw new AppError(400, "URL de YouTube no válida. Usa un enlace youtube.com o youtu.be.");
     const quality = url.searchParams.get("quality") || "720";
     if (type === "ytvideo" && !["360", "480", "720", "1080"].includes(quality)) throw new AppError(400, "La calidad debe ser 360, 480, 720 o 1080.");
-    const kind = type === "ytaudio" ? "audio" : "video";
-    const data = await createYoutubeDownload(id, kind, quality);
-    // Keep the download on the API origin: the dashboard uses fetch() + Blob,
-    // and a cross-origin CDN redirect can fail browser CORS checks.
-    return streamMedia(data.downloadUrl, `youtube-${id}`, kind);
+    if (type === "ytvideo") {
+      const serviceUrl = process.env.YTDLP_SERVICE_URL;
+      const sharedSecret = process.env.YTDLP_SHARED_SECRET;
+      if (!serviceUrl || !sharedSecret) throw new AppError(503, "El servicio yt-dlp todavía no está configurado en Vercel.");
+      let serviceResponse: Response;
+      try {
+        serviceResponse = await fetch(new URL("/download", serviceUrl), { method: "POST", headers: { "content-type": "application/json", "x-ytdlp-token": sharedSecret }, body: JSON.stringify({ url: raw, quality: Number(quality) }), cache: "no-store", signal: AbortSignal.timeout(115_000) });
+      } catch (error) {
+        console.error("yt-dlp service request failed:", error instanceof Error ? error.message : String(error));
+        throw new AppError(502, "No se pudo conectar con el servicio yt-dlp. Comprueba que Render esté activo.");
+      }
+      if (!serviceResponse.ok) {
+        const detail = (await serviceResponse.text()).slice(0, 700);
+        console.error("yt-dlp service error:", serviceResponse.status, detail);
+        throw new AppError(502, "yt-dlp no pudo descargar el video: " + (detail || serviceResponse.statusText));
+      }
+      if (!serviceResponse.body) throw new AppError(502, "yt-dlp devolvió un archivo vacío.");
+      const contentType = (serviceResponse.headers.get("content-type") || "").toLowerCase();
+      if (!contentType.includes("video/mp4") && !contentType.includes("application/octet-stream")) throw new AppError(502, "yt-dlp no devolvió un archivo MP4 válido.");
+      const filename = serviceResponse.headers.get("content-disposition")?.match(/filename="?([^";]+)"?/i)?.[1] || "youtube-" + id + ".mp4";
+      return attachment(new Response(serviceResponse.body, { headers: { "content-type": "video/mp4", "content-length": serviceResponse.headers.get("content-length") || "" } }), filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100), "video/mp4");
+    }
+    const data = await createYoutubeDownload(id, "audio", quality);
+    return streamMedia(data.downloadUrl, "youtube-" + id, "audio");
   }
 
   if (type === "pinterest") {
